@@ -11,6 +11,10 @@ import {
 	openRelatedFile,
 	type ClassifiedValue,
 } from '../utils/value-links';
+import {
+	renameFileKindIcon,
+	resolveRenameFileKind,
+} from '../utils/embed';
 import { FullPropertiesPanel } from './full-properties-panel';
 import {
 	ListValueSuggest,
@@ -45,7 +49,6 @@ export interface RenamePromptOptions {
 	/** Show and prefill the alias / title field. */
 	showAlias?: boolean;
 	alias?: string | null;
-	nameLabel?: string;
 	aliasLabel?: string;
 	/**
 	 * File extension shown after the name input (e.g. `.md`, `.png`).
@@ -56,7 +59,7 @@ export interface RenamePromptOptions {
 	allowEditExtension?: boolean;
 	/** Source path used to resolve wiki / note links in list chips. */
 	sourcePath?: string;
-	/** Related vault file for “文件” (click label icon to open). */
+	/** Related vault file (click label icon to open). */
 	relatedFile?: TFile | null;
 	/** Document properties / separators shown under the collapsible “更多” section. */
 	properties?: PropertyPanelItem[];
@@ -149,7 +152,12 @@ export class RenamePromptModal extends Modal {
 
 		const header = contentEl.createDiv({ cls: 'f2-rename-header' });
 		const iconWrap = header.createDiv({ cls: 'f2-rename-icon' });
-		setIcon(iconWrap, this.options.mode === 'url' ? 'link' : 'pencil');
+		const fileKind = resolveRenameFileKind(this.options.relatedFile, {
+			mode: this.options.mode ?? 'file',
+			extension: this.options.extension ?? this.extensionValue,
+		});
+		iconWrap.setAttr('data-file-kind', fileKind);
+		setIcon(iconWrap, renameFileKindIcon(fileKind));
 		header.createEl('h2', {
 			text: this.titleText,
 			cls: 'f2-rename-title',
@@ -161,13 +169,10 @@ export class RenamePromptModal extends Modal {
 		const isUrl = this.options.mode === 'url';
 		const showAlias = this.options.showAlias ?? isUrl;
 		const relatedFile = this.options.relatedFile ?? null;
-		const isRelatedDoc = Boolean(relatedFile) && !isUrl;
 
 		const nameField = {
 			id: 'f2-rename-input',
-			label:
-				this.options.nameLabel ??
-				(isUrl ? '链接' : isRelatedDoc ? '文件' : '文件名'),
+			label: isUrl ? '链接' : '文件名',
 			value: this.defaultValue,
 			suffix: isUrl ? undefined : this.options.extension,
 			editableSuffix: Boolean(

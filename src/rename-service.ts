@@ -138,7 +138,6 @@ export class RenameService {
 				mode: 'url',
 				showAlias: true,
 				alias: embed.alias ?? '',
-				nameLabel: '链接',
 				aliasLabel: '标题',
 				sourcePath: this.app.workspace.getActiveFile()?.path ?? '',
 			},
@@ -198,7 +197,6 @@ export class RenameService {
 			mode: 'file',
 			showAlias,
 			alias: embed.alias ?? '',
-			nameLabel: target ? '文件' : '文件名',
 			extension: displayExtensionSuffix(
 				target,
 				excalidraw,
@@ -311,7 +309,6 @@ export class RenameService {
 
 		const kindLabel = this.describeFileKind(target, isEmbed, excalidraw);
 		const result = await promptRename(this.app, kindLabel, displayBase, {
-			nameLabel: isEmbed ? '文件' : '文件名',
 			extension: displayExtensionSuffix(target, excalidraw),
 			allowEditExtension: settings.editExtension,
 			relatedFile: target,
