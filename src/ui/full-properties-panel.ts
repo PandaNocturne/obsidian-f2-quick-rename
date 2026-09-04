@@ -129,12 +129,16 @@ export class FullPropertiesPanel {
 	): void {
 		const row = parent.createDiv({
 			cls: 'f2-full-props-row',
-			attr: { draggable: 'true', 'data-index': String(index) },
+			attr: { 'data-index': String(index) },
 		});
 
 		const handle = row.createSpan({
 			cls: 'f2-full-props-handle',
-			attr: { title: '拖动排序', 'aria-label': '拖动排序' },
+			attr: {
+				draggable: 'true',
+				title: '拖动排序',
+				'aria-label': '拖动排序',
+			},
 		});
 		setIcon(handle, 'grip-vertical');
 
@@ -197,13 +201,14 @@ export class FullPropertiesPanel {
 		setIcon(removeBtn, 'x');
 		removeBtn.addEventListener('click', () => this.removeAt(index));
 
-		row.addEventListener('dragstart', (evt) => {
+		// Only the grip handle starts a drag so inputs keep text selection.
+		handle.addEventListener('dragstart', (evt) => {
 			this.dragFrom = index;
 			row.addClass('is-dragging');
 			evt.dataTransfer?.setData(DRAG_MIME, String(index));
 			if (evt.dataTransfer) evt.dataTransfer.effectAllowed = 'move';
 		});
-		row.addEventListener('dragend', () => {
+		handle.addEventListener('dragend', () => {
 			this.dragFrom = -1;
 			row.removeClass('is-dragging');
 			parent

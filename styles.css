@@ -257,6 +257,19 @@
 	height: var(--input-height);
 	color: var(--text-faint);
 	cursor: grab;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.f2-full-props-handle:active {
+	cursor: grabbing;
+}
+
+.f2-full-props-key,
+.f2-full-props-input,
+.f2-full-props-textarea {
+	user-select: text;
+	-webkit-user-select: text;
 }
 
 .f2-full-props-handle svg {
