@@ -1,4 +1,4 @@
-import { App, Modal, setIcon } from 'obsidian';
+import { App, Modal, Notice, setIcon } from 'obsidian';
 import type {
 	PropertyFieldState,
 	PropertyValue,
@@ -375,18 +375,122 @@ export class RenamePromptModal extends Modal {
 		const renderChips = (): void => {
 			chips.empty();
 			for (const [index, item] of getList().entries()) {
-				const chip = chips.createSpan({ cls: 'f2-rename-chip' });
-				const text = useTagSuggest ? `#${normalizeTagName(item)}` : item;
-				chip.createSpan({ text, cls: 'f2-rename-chip-text' });
+				const chip = chips.createSpan({
+					cls: 'f2-rename-chip',
+					attr: { title: '双击编辑' },
+				});
+				const textEl = chip.createSpan({
+					cls: 'f2-rename-chip-text',
+				});
+				textEl.setText(
+					useTagSuggest ? `#${normalizeTagName(item)}` : item,
+				);
+
+				const beginEdit = (): void => {
+					if (chip.hasClass('is-editing')) return;
+					chip.addClass('is-editing');
+					chip.removeAttribute('title');
+					remove.hide();
+
+					textEl.setAttr('contenteditable', 'true');
+					textEl.setAttr('spellcheck', 'false');
+					textEl.setAttr('role', 'textbox');
+					// Keep visible label; tags stay with leading # while editing.
+					textEl.setText(
+						useTagSuggest ? `#${normalizeTagName(item)}` : item,
+					);
+
+					let closed = false;
+					const finish = (action: () => void): void => {
+						if (closed) return;
+						closed = true;
+						action();
+					};
+
+					const commit = (): void => {
+						finish(() => {
+							const raw = textEl.getText();
+							const next = useTagSuggest
+								? normalizeTagName(raw)
+								: raw.trim();
+							const list = getList();
+							if (!next) {
+								list.splice(index, 1);
+								setList(list);
+								return;
+							}
+							const duplicate = list.some(
+								(other, i) =>
+									i !== index &&
+									(other.toLowerCase() ===
+										next.toLowerCase() ||
+										normalizeTagName(
+											other,
+										).toLowerCase() === next.toLowerCase()),
+							);
+							if (duplicate) {
+								closed = false;
+								new Notice('列表中已存在相同项');
+								textEl.focus();
+								return;
+							}
+							list[index] = next;
+							setList(list);
+						});
+					};
+
+					const cancel = (): void => {
+						finish(() => renderChips());
+					};
+
+					const onKeyDown = (evt: KeyboardEvent): void => {
+						if (evt.key === 'Enter') {
+							evt.preventDefault();
+							evt.stopPropagation();
+							commit();
+						} else if (evt.key === 'Escape') {
+							evt.preventDefault();
+							evt.stopPropagation();
+							cancel();
+						}
+					};
+					const onBlur = (): void => {
+						window.setTimeout(() => commit(), 0);
+					};
+
+					textEl.addEventListener('keydown', onKeyDown);
+					textEl.addEventListener('blur', onBlur);
+
+					textEl.focus();
+					const selection = window.getSelection();
+					if (selection) {
+						const range = activeDocument.createRange();
+						range.selectNodeContents(textEl);
+						selection.removeAllRanges();
+						selection.addRange(range);
+					}
+				};
+
+				chip.addEventListener('dblclick', (evt) => {
+					evt.preventDefault();
+					evt.stopPropagation();
+					beginEdit();
+				});
+
 				const remove = chip.createEl('button', {
 					cls: 'f2-rename-chip-remove',
 					attr: { type: 'button', 'aria-label': '移除' },
 				});
 				setIcon(remove, 'x');
-				remove.addEventListener('click', () => {
+				remove.addEventListener('click', (evt) => {
+					evt.stopPropagation();
 					const list = getList();
 					list.splice(index, 1);
 					setList(list);
+				});
+				remove.addEventListener('dblclick', (evt) => {
+					evt.preventDefault();
+					evt.stopPropagation();
 				});
 			}
 		};
