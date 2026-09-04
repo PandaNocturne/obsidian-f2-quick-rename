@@ -36,6 +36,15 @@ export default class F2RenamePlugin extends Plugin {
 			},
 		});
 
+		this.addCommand({
+			id: 'f5-full-properties',
+			name: '重命名并编辑全部属性',
+			hotkeys: [{ modifiers: [], key: 'F5' }],
+			callback: () => {
+				void this.renameService.runFullProperties();
+			},
+		});
+
 		this.registerEvent(
 			this.app.workspace.on('file-menu', (menu, file) => {
 				if (!(file instanceof TFile)) return;

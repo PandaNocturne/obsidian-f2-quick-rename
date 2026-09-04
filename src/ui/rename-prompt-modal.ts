@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TFile, normalizePath, setIcon } from 'obsidian';
+import { App, Modal, Notice, TFile, setIcon } from 'obsidian';
 import type {
 	PropertyFieldState,
 	PropertyPanelItem,
@@ -11,6 +11,7 @@ import {
 	openRelatedFile,
 	type ClassifiedValue,
 } from '../utils/value-links';
+import { FullPropertiesPanel } from './full-properties-panel';
 import {
 	ListValueSuggest,
 	TagInputSuggest,
@@ -31,6 +32,8 @@ export interface RenamePromptResult {
 	extension?: string;
 	/** Frontmatter values keyed by property name. */
 	properties?: Record<string, PropertyValue>;
+	/** Ordered full-properties fields (F5 panel) at submit time. */
+	fullPropertyFields?: PropertyFieldState[];
 }
 
 export interface RenamePromptOptions {
@@ -53,16 +56,34 @@ export interface RenamePromptOptions {
 	allowEditExtension?: boolean;
 	/** Source path used to resolve wiki / note links in list chips. */
 	sourcePath?: string;
-	/** Related vault file for “关联文档” (click label icon to open). */
+	/** Related vault file for “文件” (click label icon to open). */
 	relatedFile?: TFile | null;
 	/** Document properties / separators shown under the collapsible “更多” section. */
 	properties?: PropertyPanelItem[];
+	/**
+	 * Custom YAML properties editor (add / delete / reorder).
+	 * F2 passes configured fields; F5 passes all frontmatter keys.
+	 * When set, replaces the configured “更多” section.
+	 */
+	fullProperties?: PropertyFieldState[];
+	/** Open the properties section by default (F5 uses true). */
+	propertiesOpen?: boolean;
 	/** Persist property edits immediately (default driven by settings). */
 	autoSaveProperties?: boolean;
-	/** Called when properties change and auto-save is enabled. */
+	/** Called when configured (非全量) properties change and auto-save is enabled. */
 	onPropertiesChange?: (
 		values: Record<string, PropertyValue>,
 	) => void | Promise<void>;
+	/** Called when full-properties panel changes (ordered fields + values). */
+	onFullPropertiesChange?: (
+		fields: PropertyFieldState[],
+		values: Record<string, PropertyValue>,
+	) => void | Promise<void>;
+	/**
+	 * When true (F2), only configured properties are shown initially;
+	 * session-added properties appear until the dialog closes.
+	 */
+	propertiesMergeWrites?: boolean;
 }
 
 /**
@@ -82,6 +103,7 @@ export class RenamePromptModal extends Modal {
 	private inputEl: HTMLInputElement | null = null;
 	private aliasInputEl: HTMLInputElement | null = null;
 	private propertySaveTimer: number | null = null;
+	private fullPropertiesPanel: FullPropertiesPanel | null = null;
 
 	constructor(
 		app: App,
@@ -111,6 +133,9 @@ export class RenamePromptModal extends Modal {
 					);
 				}
 			}
+		}
+		for (const field of options.fullProperties ?? []) {
+			this.propertyValues[field.key] = this.cloneValue(field.value);
 		}
 	}
 
@@ -142,7 +167,7 @@ export class RenamePromptModal extends Modal {
 			id: 'f2-rename-input',
 			label:
 				this.options.nameLabel ??
-				(isUrl ? '链接' : isRelatedDoc ? '关联文档' : '文件名'),
+				(isUrl ? '链接' : isRelatedDoc ? '文件' : '文件名'),
 			value: this.defaultValue,
 			suffix: isUrl ? undefined : this.options.extension,
 			editableSuffix: Boolean(
@@ -222,7 +247,10 @@ export class RenamePromptModal extends Modal {
 		}
 
 		const properties = this.options.properties ?? [];
-		if (properties.length > 0) {
+		const fullProperties = this.options.fullProperties;
+		if (fullProperties) {
+			this.renderFullPropertiesSection(body, fullProperties);
+		} else if (properties.length > 0) {
 			this.renderMoreSection(body, properties);
 		}
 
@@ -230,23 +258,19 @@ export class RenamePromptModal extends Modal {
 		const left = footer.createDiv({ cls: 'f2-rename-footer-left' });
 		const right = footer.createDiv({ cls: 'f2-rename-footer-right' });
 
-		const copyPathBtn = left.createEl('button', {
-			text: '复制路径',
-			cls: 'f2-rename-btn',
-			attr: { type: 'button' },
-		});
-		copyPathBtn.addEventListener('click', () => {
-			void this.copyText(this.getCopyPath(), '路径');
-		});
-
-		const copyTitleBtn = left.createEl('button', {
-			text: '复制标题',
-			cls: 'f2-rename-btn',
-			attr: { type: 'button' },
-		});
-		copyTitleBtn.addEventListener('click', () => {
-			void this.copyText(this.getCopyTitle(), '标题');
-		});
+		const canAddProperty = this.options.fullProperties !== undefined;
+		if (canAddProperty) {
+			const addBtn = left.createEl('button', {
+				cls: 'f2-rename-btn f2-rename-btn-add-prop',
+				attr: { type: 'button' },
+			});
+			const addIcon = addBtn.createSpan({
+				cls: 'f2-rename-btn-add-prop-icon',
+			});
+			setIcon(addIcon, 'plus');
+			addBtn.createSpan({ text: '添加属性' });
+			addBtn.addEventListener('click', () => this.handleAddProperty());
+		}
 
 		const cancelBtn = right.createEl('button', {
 			text: '取消',
@@ -283,6 +307,11 @@ export class RenamePromptModal extends Modal {
 			window.clearTimeout(this.propertySaveTimer);
 			this.propertySaveTimer = null;
 		}
+		if (this.fullPropertiesPanel) {
+			void this.fullPropertiesPanel.flush();
+			this.fullPropertiesPanel.destroy();
+			this.fullPropertiesPanel = null;
+		}
 		const { contentEl } = this;
 		contentEl.empty();
 		this.inputEl = null;
@@ -293,6 +322,61 @@ export class RenamePromptModal extends Modal {
 		}
 	}
 
+	private renderFullPropertiesSection(
+		parent: HTMLElement,
+		fields: PropertyFieldState[],
+	): void {
+		const details = parent.createEl('details', {
+			cls: 'f2-rename-more f2-rename-more-full',
+		});
+		details.open = this.options.propertiesOpen !== false;
+		const summary = details.createEl('summary', {
+			cls: 'f2-rename-more-summary',
+		});
+		const summaryIcon = summary.createSpan({
+			cls: 'f2-rename-more-chevron',
+		});
+		setIcon(summaryIcon, 'chevron-right');
+		summary.createSpan({ text: '属性' });
+
+		const panel = details.createDiv({ cls: 'f2-rename-more-body' });
+		this.fullPropertiesPanel = new FullPropertiesPanel({
+			app: this.app,
+			fields,
+			sourcePath: this.getSuggestSourcePath(),
+			autoSave: Boolean(
+				this.options.autoSaveProperties &&
+					this.options.onFullPropertiesChange,
+			),
+			onChange: async (nextFields, values) => {
+				for (const [key, value] of Object.entries(values)) {
+					this.propertyValues[key] = this.cloneValue(value);
+				}
+				if (this.options.onFullPropertiesChange) {
+					await this.options.onFullPropertiesChange(
+						nextFields,
+						values,
+					);
+				}
+			},
+		});
+		this.fullPropertiesPanel.mount(panel);
+	}
+
+	private handleAddProperty(): void {
+		const details = this.contentEl.querySelector('details.f2-rename-more');
+		if (details instanceof HTMLDetailsElement) {
+			details.open = true;
+		}
+
+		if (this.fullPropertiesPanel) {
+			this.fullPropertiesPanel.addProperty();
+			return;
+		}
+
+		new Notice('当前面板不支持添加属性');
+	}
+
 	private renderMoreSection(
 		parent: HTMLElement,
 		properties: PropertyPanelItem[],
@@ -300,6 +384,9 @@ export class RenamePromptModal extends Modal {
 		const details = parent.createEl('details', {
 			cls: 'f2-rename-more',
 		});
+		if (this.options.propertiesOpen) {
+			details.open = true;
+		}
 		const summary = details.createEl('summary', {
 			cls: 'f2-rename-more-summary',
 		});
@@ -569,16 +656,16 @@ export class RenamePromptModal extends Modal {
 				id: `f2-prop-${field.key}`,
 				spellcheck: 'false',
 				autocomplete: 'off',
+				'data-property-type': field.key,
 				...(field.showHint
 					? { placeholder: field.label }
 					: {}),
-				...(isTags ? { 'data-property-type': 'tags' } : {}),
 			},
 		});
 
 		const chips = wrap.createDiv({
 			cls: 'f2-rename-list-chips',
-			attr: isTags ? { 'data-property-type': 'tags' } : undefined,
+			attr: { 'data-property-type': field.key },
 		});
 
 		const useTagSuggest = isTags || shouldSuggestTags(field.key);
@@ -620,7 +707,7 @@ export class RenamePromptModal extends Modal {
 							classified.kind === 'text'
 								? '双击编辑'
 								: '点击图标打开，双击编辑',
-						...(isTags ? { 'data-property-type': 'tags' } : {}),
+						'data-property-type': field.key,
 						'data-value-kind': classified.kind,
 					},
 				});
@@ -1075,55 +1162,6 @@ export class RenamePromptModal extends Modal {
 		await this.options.onPropertiesChange({ ...this.propertyValues });
 	}
 
-	private getCopyPath(): string {
-		if (this.options.mode === 'url') {
-			return this.value.trim();
-		}
-
-		const name = this.value.trim();
-		const ext = this.extensionValue || this.options.extension || '';
-		const file = this.options.relatedFile;
-		if (file) {
-			const parent = file.parent?.path ?? '';
-			const leaf = `${name || file.basename}${ext}`;
-			return normalizePath(parent ? `${parent}/${leaf}` : leaf);
-		}
-
-		if (name) {
-			return `${name}${ext}`;
-		}
-		return this.options.sourcePath?.trim() ?? '';
-	}
-
-	private getCopyTitle(): string {
-		if (this.options.mode === 'url') {
-			return this.aliasValue.trim() || this.value.trim();
-		}
-
-		const titleProp = this.propertyValues.title;
-		if (typeof titleProp === 'string' && titleProp.trim()) {
-			return titleProp.trim();
-		}
-		if (this.aliasValue.trim()) {
-			return this.aliasValue.trim();
-		}
-		return this.value.trim();
-	}
-
-	private async copyText(text: string, label: string): Promise<void> {
-		const value = text.trim();
-		if (!value) {
-			new Notice(`${label}为空，无法复制`);
-			return;
-		}
-		try {
-			await navigator.clipboard.writeText(value);
-			new Notice(`已复制${label}`);
-		} catch {
-			new Notice(`复制${label}失败`);
-		}
-	}
-
 	private submitResult(): void {
 		const result: RenamePromptResult = { name: this.value };
 		if (this.options.showAlias || this.options.mode === 'url') {
@@ -1141,6 +1179,14 @@ export class RenamePromptModal extends Modal {
 			// Flush any pending debounced auto-save before closing.
 			if (this.options.autoSaveProperties) {
 				void this.persistProperties(true);
+			}
+		}
+		if (this.fullPropertiesPanel) {
+			const snapshot = this.fullPropertiesPanel.getSnapshot();
+			result.properties = snapshot.values;
+			result.fullPropertyFields = snapshot.fields;
+			if (this.options.autoSaveProperties) {
+				void this.fullPropertiesPanel.flush();
 			}
 		}
 		this.submit(result);
@@ -1178,7 +1224,7 @@ function chipActionTitle(value: ClassifiedValue): string {
 		case 'url':
 			return '打开链接';
 		case 'document':
-			return '打开关联文档';
+			return '打开文件';
 		default:
 			return '';
 	}

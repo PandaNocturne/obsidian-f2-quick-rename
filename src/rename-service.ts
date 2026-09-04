@@ -13,14 +13,15 @@ import {
 	resolveEmbedFile,
 	stripExcalidrawBasename,
 } from './utils/embed';
+import type { PropertyFieldState, PropertyValue } from './settings';
 import {
+	buildConfiguredPropertyStates,
+	buildFullPropertyStates,
 	buildPropertyPanelItems,
+	writeFullFrontmatter,
+	writeMergedFrontmatter,
 	writePropertyValues,
 } from './utils/properties';
-import {
-	hasConfiguredPropertyFields,
-	type PropertyValue,
-} from './settings';
 
 export class RenameService {
 	constructor(private readonly plugin: F2RenamePlugin) {}
@@ -77,6 +78,23 @@ export class RenameService {
 	/** Rename a specific vault file (e.g. from the file explorer context menu). */
 	async runForFile(file: TFile): Promise<void> {
 		await this.renameTargetFile(file, false);
+	}
+
+	/**
+	 * Open the F2 rename window with the full YAML properties panel expanded
+	 * (add / edit / delete / reorder), bound to F5.
+	 */
+	async runFullProperties(): Promise<void> {
+		const file = this.app.workspace.getActiveFile();
+		if (!file) {
+			new Notice('没有打开的文件');
+			return;
+		}
+		if (file.extension !== 'md') {
+			new Notice('仅支持 Markdown 笔记的全属性面板');
+			return;
+		}
+		await this.renameTargetFile(file, false, { fullProperties: true });
 	}
 
 	private getSelection(): { selection: string; editor: Editor | null } {
@@ -180,7 +198,7 @@ export class RenameService {
 			mode: 'file',
 			showAlias,
 			alias: embed.alias ?? '',
-			nameLabel: target ? '关联文档' : '文件名',
+			nameLabel: target ? '文件' : '文件名',
 			extension: displayExtensionSuffix(
 				target,
 				excalidraw,
@@ -253,6 +271,7 @@ export class RenameService {
 	private async renameTargetFile(
 		target: TFile,
 		isEmbed: boolean,
+		options: { fullProperties?: boolean } = {},
 	): Promise<void> {
 		const { settings } = this.plugin;
 		const excalidraw = isExcalidrawFile(target);
@@ -260,28 +279,58 @@ export class RenameService {
 			? stripExcalidrawBasename(target.basename)
 			: target.basename;
 
-		const canEditProperties = this.canEditProperties(target);
-		const properties = canEditProperties
-			? buildPropertyPanelItems(
-					this.app,
-					target,
-					settings.propertyFields,
-				)
-			: undefined;
+		const wantProperties =
+			target.extension === 'md' && settings.editProperties;
+		const useFullList = Boolean(options.fullProperties) && wantProperties;
+		const canEditProperties = wantProperties;
+		const mergeWrites = wantProperties && !useFullList;
+
+		// F2: configured fields only; F5: every frontmatter key.
+		// Session-added F2 fields stay visible until close; next open resets.
+		const fullPropertyFields = !wantProperties
+			? undefined
+			: useFullList
+				? buildFullPropertyStates(this.app, target)
+				: buildConfiguredPropertyStates(
+						this.app,
+						target,
+						settings.propertyFields,
+					);
+		const managedKeys = (fullPropertyFields ?? []).map((field) => field.key);
 		const autoSaveProperties =
 			canEditProperties && settings.autoSaveProperties;
 
+		const trackManagedKeys = (fields: PropertyFieldState[]) => {
+			for (const field of fields) {
+				const key = field.key.trim();
+				if (key && !managedKeys.includes(key)) {
+					managedKeys.push(key);
+				}
+			}
+		};
+
 		const kindLabel = this.describeFileKind(target, isEmbed, excalidraw);
 		const result = await promptRename(this.app, kindLabel, displayBase, {
-			nameLabel: isEmbed ? '关联文档' : '文件名',
+			nameLabel: isEmbed ? '文件' : '文件名',
 			extension: displayExtensionSuffix(target, excalidraw),
 			allowEditExtension: settings.editExtension,
 			relatedFile: target,
 			sourcePath: target.path,
-			properties,
+			fullProperties: fullPropertyFields,
+			propertiesOpen: useFullList,
+			propertiesMergeWrites: mergeWrites,
 			autoSaveProperties,
-			onPropertiesChange: autoSaveProperties
-				? (values) => this.applyProperties(target, values)
+			onFullPropertiesChange: autoSaveProperties
+				? (fields, values) => {
+						trackManagedKeys(fields);
+						return this.applyPanelProperties(
+							target,
+							fields,
+							values,
+							managedKeys,
+							mergeWrites,
+						);
+					}
 				: undefined,
 		});
 		if (result === null) return;
@@ -304,7 +353,15 @@ export class RenameService {
 			canEditProperties &&
 			!settings.autoSaveProperties
 		) {
-			await this.applyProperties(target, result.properties);
+			const fields = result.fullPropertyFields ?? [];
+			trackManagedKeys(fields);
+			await this.applyPanelProperties(
+				target,
+				fields,
+				result.properties,
+				managedKeys,
+				mergeWrites,
+			);
 		}
 
 		if (!nameChanged) return;
@@ -320,10 +377,7 @@ export class RenameService {
 	private canEditProperties(file: TFile | null): boolean {
 		const { settings } = this.plugin;
 		return Boolean(
-			file &&
-				settings.editProperties &&
-				file.extension === 'md' &&
-				hasConfiguredPropertyFields(settings.propertyFields),
+			file && settings.editProperties && file.extension === 'md',
 		);
 	}
 
@@ -338,6 +392,32 @@ export class RenameService {
 				this.plugin.settings.propertyFields,
 				values,
 			);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			new Notice(`写入属性失败: ${message}`);
+		}
+	}
+
+	private async applyPanelProperties(
+		file: TFile,
+		fields: PropertyFieldState[],
+		values: Record<string, PropertyValue>,
+		managedKeys: string[],
+		mergeWrites: boolean,
+	): Promise<void> {
+		try {
+			if (mergeWrites) {
+				await writeMergedFrontmatter(
+					this.app,
+					file,
+					fields,
+					values,
+					managedKeys,
+				);
+			} else {
+				await writeFullFrontmatter(this.app, file, fields, values);
+			}
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
