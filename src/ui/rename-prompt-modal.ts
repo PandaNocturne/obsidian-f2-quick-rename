@@ -24,6 +24,11 @@ export interface RenamePromptResult {
 	name: string;
 	/** Present when the alias/title field was shown. */
 	alias?: string;
+	/**
+	 * File extension including the leading dot (e.g. `.md`, `.excalidraw.md`).
+	 * Omitted in `url` mode.
+	 */
+	extension?: string;
 	/** Frontmatter values keyed by property name. */
 	properties?: Record<string, PropertyValue>;
 }
@@ -44,6 +49,8 @@ export interface RenamePromptOptions {
 	 * Include the leading dot. Ignored in `url` mode.
 	 */
 	extension?: string;
+	/** Allow double-clicking the extension suffix to edit it. */
+	allowEditExtension?: boolean;
 	/** Source path used to resolve wiki / note links in list chips. */
 	sourcePath?: string;
 	/** Related vault file for “关联文档” (click label icon to open). */
@@ -69,6 +76,7 @@ export class RenamePromptModal extends Modal {
 	private readonly onSubmit: (value: RenamePromptResult | null) => void;
 	private value: string;
 	private aliasValue: string;
+	private extensionValue: string;
 	private propertyValues: Record<string, PropertyValue> = {};
 	private resolved = false;
 	private inputEl: HTMLInputElement | null = null;
@@ -88,6 +96,7 @@ export class RenamePromptModal extends Modal {
 		this.value = defaultValue;
 		this.options = options;
 		this.aliasValue = options.alias ?? '';
+		this.extensionValue = options.extension ?? '';
 		this.onSubmit = onSubmit;
 
 		for (const item of options.properties ?? []) {
@@ -136,6 +145,11 @@ export class RenamePromptModal extends Modal {
 				(isUrl ? '链接' : isRelatedDoc ? '关联文档' : '文件名'),
 			value: this.defaultValue,
 			suffix: isUrl ? undefined : this.options.extension,
+			editableSuffix: Boolean(
+				!isUrl &&
+					this.options.allowEditExtension &&
+					this.options.extension,
+			),
 			placeholder: isUrl ? 'https://…' : undefined,
 			icon: isUrl ? 'link' : 'file-text',
 			onIconClick: isUrl
@@ -859,6 +873,7 @@ export class RenamePromptModal extends Modal {
 			value: string;
 			placeholder?: string;
 			suffix?: string;
+			editableSuffix?: boolean;
 			icon?: string;
 			onIconClick?: () => void;
 		},
@@ -925,14 +940,82 @@ export class RenamePromptModal extends Modal {
 		});
 
 		if (opts.suffix) {
-			control.createSpan({
+			const extEl = control.createSpan({
 				text: opts.suffix,
-				cls: 'f2-rename-ext',
+				cls: opts.editableSuffix
+					? 'f2-rename-ext is-editable'
+					: 'f2-rename-ext',
+				attr: opts.editableSuffix
+					? {
+							title: '双击修改扩展名',
+							'aria-label': '双击修改扩展名',
+						}
+					: undefined,
 			});
+			if (opts.editableSuffix) {
+				this.bindEditableExtension(extEl);
+			}
 		}
 
 		this.attachWikiLinkSuggest(input, onInput);
 		return input;
+	}
+
+	private bindEditableExtension(extEl: HTMLElement): void {
+		extEl.addEventListener('dblclick', (evt) => {
+			evt.preventDefault();
+			evt.stopPropagation();
+			if (extEl.hasClass('is-editing')) return;
+
+			extEl.addClass('is-editing');
+			const previous = this.extensionValue || extEl.getText();
+			extEl.setAttr('contenteditable', 'true');
+			extEl.setAttr('spellcheck', 'false');
+			extEl.setText(previous);
+
+			const selection = window.getSelection();
+			if (selection) {
+				const range = activeDocument.createRange();
+				range.selectNodeContents(extEl);
+				selection.removeAllRanges();
+				selection.addRange(range);
+			}
+			extEl.focus();
+
+			let finished = false;
+			const onKeyDown = (keyEvt: KeyboardEvent): void => {
+				if (keyEvt.key === 'Enter') {
+					keyEvt.preventDefault();
+					keyEvt.stopPropagation();
+					finish(true);
+				} else if (keyEvt.key === 'Escape') {
+					keyEvt.preventDefault();
+					keyEvt.stopPropagation();
+					finish(false);
+				}
+			};
+			const onBlur = (): void => {
+				window.setTimeout(() => finish(true), 0);
+			};
+
+			const finish = (commit: boolean): void => {
+				if (finished) return;
+				finished = true;
+				extEl.removeEventListener('keydown', onKeyDown);
+				extEl.removeEventListener('blur', onBlur);
+				extEl.removeAttribute('contenteditable');
+				extEl.removeClass('is-editing');
+				if (commit) {
+					this.extensionValue = normalizeExtensionSuffix(
+						extEl.getText(),
+					);
+				}
+				extEl.setText(this.extensionValue || previous);
+			};
+
+			extEl.addEventListener('keydown', onKeyDown);
+			extEl.addEventListener('blur', onBlur);
+		});
 	}
 
 	private getSuggestSourcePath(): string {
@@ -998,7 +1081,7 @@ export class RenamePromptModal extends Modal {
 		}
 
 		const name = this.value.trim();
-		const ext = this.options.extension ?? '';
+		const ext = this.extensionValue || this.options.extension || '';
 		const file = this.options.relatedFile;
 		if (file) {
 			const parent = file.parent?.path ?? '';
@@ -1046,6 +1129,13 @@ export class RenamePromptModal extends Modal {
 		if (this.options.showAlias || this.options.mode === 'url') {
 			result.alias = this.aliasValue;
 		}
+		if (this.options.mode !== 'url') {
+			const ext =
+				this.extensionValue || this.options.extension || '';
+			if (ext) {
+				result.extension = normalizeExtensionSuffix(ext);
+			}
+		}
 		if ((this.options.properties?.length ?? 0) > 0) {
 			result.properties = { ...this.propertyValues };
 			// Flush any pending debounced auto-save before closing.
@@ -1092,4 +1182,13 @@ function chipActionTitle(value: ClassifiedValue): string {
 		default:
 			return '';
 	}
+}
+
+/** Ensure extension starts with a dot when non-empty. */
+function normalizeExtensionSuffix(raw: string): string {
+	const trimmed = raw.trim();
+	if (!trimmed) return '';
+	const cleaned = trimmed.replace(/^\.+/, '.');
+	if (cleaned === '.') return '';
+	return cleaned.startsWith('.') ? cleaned : `.${cleaned}`;
 }

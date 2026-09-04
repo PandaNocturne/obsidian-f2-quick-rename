@@ -181,6 +181,7 @@ export class RenameService {
 				excalidraw,
 				embed.linkpath,
 			),
+			allowEditExtension: settings.editExtension,
 			relatedFile: target,
 			sourcePath:
 				this.app.workspace.getActiveFile()?.path ?? target?.path ?? '',
@@ -221,15 +222,12 @@ export class RenameService {
 
 		if (!newBase) return;
 
-		if (excalidraw) {
-			newBase = `${newBase}.excalidraw`;
-		}
-
 		const parentPath = target.parent?.path ?? '';
-		const newPath = normalizePath(
-			parentPath
-				? `${parentPath}/${newBase}.${target.extension}`
-				: `${newBase}.${target.extension}`,
+		const { newPath, companionBase } = this.buildRenamePaths(
+			target,
+			newBase,
+			result.extension,
+			excalidraw,
 		);
 
 		const nameChanged = newPath !== target.path;
@@ -244,7 +242,7 @@ export class RenameService {
 
 		if (!nameChanged) return;
 
-		await this.applyFileRename(target, newBase, newPath, parentPath);
+		await this.applyFileRename(target, companionBase, newPath, parentPath);
 	}
 
 	private async renameTargetFile(
@@ -272,6 +270,7 @@ export class RenameService {
 		const result = await promptRename(this.app, kindLabel, displayBase, {
 			nameLabel: isEmbed ? '关联文档' : '文件名',
 			extension: displayExtensionSuffix(target, excalidraw),
+			allowEditExtension: settings.editExtension,
 			relatedFile: target,
 			sourcePath: target.path,
 			properties,
@@ -282,18 +281,15 @@ export class RenameService {
 		});
 		if (result === null) return;
 
-		let newBase = normalizeSpaces(result.name);
+		const newBase = normalizeSpaces(result.name);
 		if (!newBase) return;
 
-		if (excalidraw) {
-			newBase = `${newBase}.excalidraw`;
-		}
-
 		const parentPath = target.parent?.path ?? '';
-		const newPath = normalizePath(
-			parentPath
-				? `${parentPath}/${newBase}.${target.extension}`
-				: `${newBase}.${target.extension}`,
+		const { newPath, companionBase } = this.buildRenamePaths(
+			target,
+			newBase,
+			result.extension,
+			excalidraw,
 		);
 
 		const nameChanged = newPath !== target.path;
@@ -312,7 +308,7 @@ export class RenameService {
 			await navigator.clipboard.writeText(newBase).catch(() => undefined);
 		}
 
-		await this.applyFileRename(target, newBase, newPath, parentPath);
+		await this.applyFileRename(target, companionBase, newPath, parentPath);
 	}
 
 	/** Markdown notes whose frontmatter can be edited in the rename panel. */
@@ -406,6 +402,32 @@ export class RenameService {
 			{ line: lineNo, ch: at },
 			{ line: lineNo, ch: at + raw.length },
 		);
+	}
+
+	/**
+	 * Build the target path from the editable stem + extension suffix.
+	 * Companion renames use Obsidian's basename stem of the new leaf name.
+	 */
+	private buildRenamePaths(
+		target: TFile,
+		stem: string,
+		extensionFromPrompt: string | undefined,
+		excalidraw: boolean,
+	): { newPath: string; companionBase: string } {
+		const fallback = displayExtensionSuffix(target, excalidraw);
+		let ext = (extensionFromPrompt ?? fallback).trim();
+		if (ext && !ext.startsWith('.')) ext = `.${ext}`;
+		if (!ext && target.extension) ext = `.${target.extension}`;
+
+		const parentPath = target.parent?.path ?? '';
+		const leaf = `${stem}${ext}`;
+		const newPath = normalizePath(
+			parentPath ? `${parentPath}/${leaf}` : leaf,
+		);
+		const companionBase = leaf.includes('.')
+			? leaf.replace(/\.[^.]+$/, '')
+			: leaf;
+		return { newPath, companionBase };
 	}
 
 	private describeFileKind(

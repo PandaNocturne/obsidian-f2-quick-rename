@@ -139,6 +139,30 @@
 	user-select: none;
 }
 
+.f2-rename-ext.is-editable {
+	cursor: text;
+	border-radius: var(--radius-s);
+	padding: 0.1rem 0.2rem;
+}
+
+.f2-rename-ext.is-editable:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.f2-rename-ext.is-editing {
+	max-width: 12rem;
+	overflow: visible;
+	text-overflow: clip;
+	user-select: text;
+	outline: none;
+	color: var(--text-normal);
+	background: var(--background-modifier-form-field);
+	border: 1px solid var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+	caret-color: var(--interactive-accent);
+}
+
 /* Slot for upcoming options / toggles */
 .f2-rename-options:empty {
 	display: none;

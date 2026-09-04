@@ -104,7 +104,12 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 	{
 		key: 'autoSaveProperties',
 		name: '属性编辑自动保存',
-		desc: '在「更多」中修改属性后立即写入笔记，无需点击确认。关闭后需点击「重命名」才会保存属性。',
+		desc: '在「更多」中修改属性后立即写入笔记，无需点击确认。关闭后需点击「确认」才会保存属性。',
+	},
+	{
+		key: 'editExtension',
+		name: '双击修改扩展名',
+		desc: '开启后，可在重命名面板中双击文件名后的扩展名进行编辑（例如 .md）。默认关闭。',
 	},
 ];
 

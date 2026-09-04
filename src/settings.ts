@@ -99,6 +99,11 @@ export interface F2RenameSettings {
 	 * (no need to click confirm for attributes).
 	 */
 	autoSaveProperties: boolean;
+	/**
+	 * Double-click the extension suffix in the rename panel to edit it.
+	 * Defaults to false.
+	 */
+	editExtension: boolean;
 	/** Frontmatter keys / separators / rows editable in the rename panel. */
 	propertyFields: PropertySettingsItem[];
 }
@@ -136,6 +141,7 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	copyNameToClipboard: true,
 	editProperties: true,
 	autoSaveProperties: true,
+	editExtension: false,
 	propertyFields: DEFAULT_PROPERTY_FIELDS.map((item) =>
 		clonePropertySettingsItem(item),
 	),
