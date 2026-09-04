@@ -640,16 +640,16 @@ export class RenamePromptModal extends Modal {
 				id: `f2-prop-${field.key}`,
 				spellcheck: 'false',
 				autocomplete: 'off',
+				'data-property-type': field.key,
 				...(field.showHint
 					? { placeholder: field.label }
 					: {}),
-				...(isTags ? { 'data-property-type': 'tags' } : {}),
 			},
 		});
 
 		const chips = wrap.createDiv({
 			cls: 'f2-rename-list-chips',
-			attr: isTags ? { 'data-property-type': 'tags' } : undefined,
+			attr: { 'data-property-type': field.key },
 		});
 
 		const useTagSuggest = isTags || shouldSuggestTags(field.key);
@@ -691,7 +691,7 @@ export class RenamePromptModal extends Modal {
 							classified.kind === 'text'
 								? '双击编辑'
 								: '点击图标打开，双击编辑',
-						...(isTags ? { 'data-property-type': 'tags' } : {}),
+						'data-property-type': field.key,
 						'data-value-kind': classified.kind,
 					},
 				});

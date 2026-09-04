@@ -1,4 +1,4 @@
-import { App, Menu, setIcon } from 'obsidian';
+import { App, Menu, Notice, setIcon } from 'obsidian';
 import {
 	PROPERTY_TYPE_OPTIONS,
 	type PropertyFieldState,
@@ -412,7 +412,13 @@ export class FullPropertiesPanel {
 		const isTags = propertyType === 'tags';
 		const useTagSuggest = isTags || shouldSuggestTags(field.key);
 
-		const wrap = host.createDiv({ cls: 'f2-full-props-list-editor' });
+		const wrap = host.createDiv({
+			cls: 'f2-full-props-list-editor',
+			attr: {
+				'data-property-type': field.key,
+				'data-property-key': field.key,
+			},
+		});
 		const input = wrap.createEl('input', {
 			type: 'text',
 			cls: 'f2-full-props-input',
@@ -420,9 +426,13 @@ export class FullPropertiesPanel {
 				spellcheck: 'false',
 				autocomplete: 'off',
 				placeholder: '输入后回车添加',
+				'data-property-type': field.key,
 			},
 		});
-		const chips = wrap.createDiv({ cls: 'f2-full-props-chips' });
+		const chips = wrap.createDiv({
+			cls: 'f2-full-props-chips',
+			attr: { 'data-property-type': field.key },
+		});
 
 		const getList = (): string[] => {
 			const value = this.values[field.key];
@@ -438,20 +448,113 @@ export class FullPropertiesPanel {
 		const renderChips = (): void => {
 			chips.empty();
 			for (const [chipIndex, item] of getList().entries()) {
-				const chip = chips.createSpan({ cls: 'f2-rename-chip' });
-				chip.createSpan({
-					cls: 'f2-rename-chip-text',
-					text: item,
+				const chip = chips.createSpan({
+					cls: 'f2-rename-chip',
+					attr: {
+						title: '双击编辑',
+						'data-property-type': field.key,
+					},
 				});
+				const textEl = chip.createSpan({
+					cls: 'f2-rename-chip-text',
+				});
+				textEl.setText(item);
+
 				const remove = chip.createEl('button', {
 					cls: 'f2-rename-chip-remove',
 					attr: { type: 'button', 'aria-label': '移除' },
 				});
 				setIcon(remove, 'x');
-				remove.addEventListener('click', () => {
+				remove.addEventListener('click', (evt) => {
+					evt.stopPropagation();
 					const list = getList();
 					list.splice(chipIndex, 1);
 					setList(list);
+				});
+				remove.addEventListener('dblclick', (evt) => {
+					evt.preventDefault();
+					evt.stopPropagation();
+				});
+
+				const beginEdit = (): void => {
+					if (chip.hasClass('is-editing')) return;
+					chip.addClass('is-editing');
+					chip.removeAttribute('title');
+					remove.hide();
+
+					textEl.setAttr('contenteditable', 'true');
+					textEl.setAttr('spellcheck', 'false');
+					textEl.setAttr('role', 'textbox');
+					textEl.setText(item);
+
+					let closed = false;
+					const finish = (action: () => void): void => {
+						if (closed) return;
+						closed = true;
+						action();
+					};
+
+					const commit = (): void => {
+						finish(() => {
+							const raw = textEl.getText();
+							const next = useTagSuggest
+								? normalizeTagName(raw)
+								: raw.trim();
+							const list = getList();
+							if (!next) {
+								list.splice(chipIndex, 1);
+								setList(list);
+								return;
+							}
+							const duplicate = list.some(
+								(other, i) =>
+									i !== chipIndex &&
+									other.toLowerCase() === next.toLowerCase(),
+							);
+							if (duplicate) {
+								closed = false;
+								new Notice('列表中已存在相同项');
+								textEl.focus();
+								return;
+							}
+							list[chipIndex] = next;
+							setList(list);
+						});
+					};
+
+					const cancel = (): void => {
+						finish(() => renderChips());
+					};
+
+					textEl.addEventListener('keydown', (evt: KeyboardEvent) => {
+						if (evt.key === 'Enter') {
+							evt.preventDefault();
+							evt.stopPropagation();
+							commit();
+						} else if (evt.key === 'Escape') {
+							evt.preventDefault();
+							evt.stopPropagation();
+							cancel();
+						}
+					});
+					textEl.addEventListener('blur', () => {
+						window.setTimeout(() => commit(), 0);
+					});
+
+					textEl.focus();
+					const selection = window.getSelection();
+					if (selection) {
+						const range = activeDocument.createRange();
+						range.selectNodeContents(textEl);
+						selection.removeAllRanges();
+						selection.addRange(range);
+					}
+				};
+
+				chip.addEventListener('dblclick', (evt) => {
+					evt.preventDefault();
+					evt.stopPropagation();
+					beginEdit();
 				});
 			}
 		};
