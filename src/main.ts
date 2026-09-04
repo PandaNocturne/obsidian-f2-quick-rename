@@ -1,4 +1,4 @@
-import { Plugin } from 'obsidian';
+import { Plugin, TFile } from 'obsidian';
 import { RenameService } from './rename-service';
 import {
 	DEFAULT_PROPERTY_FIELDS,
@@ -35,6 +35,20 @@ export default class F2RenamePlugin extends Plugin {
 				void this.renameService.run();
 			},
 		});
+
+		this.registerEvent(
+			this.app.workspace.on('file-menu', (menu, file) => {
+				if (!(file instanceof TFile)) return;
+				menu.addItem((item) => {
+					item
+						.setTitle('F2 重命名')
+						.setIcon('pencil')
+						.onClick(() => {
+							void this.renameService.runForFile(file);
+						});
+				});
+			}),
+		);
 
 		this.addSettingTab(new F2RenameSettingTab(this.app, this));
 	}

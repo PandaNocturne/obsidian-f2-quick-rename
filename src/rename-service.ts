@@ -74,6 +74,11 @@ export class RenameService {
 		await this.renameTargetFile(file, false);
 	}
 
+	/** Rename a specific vault file (e.g. from the file explorer context menu). */
+	async runForFile(file: TFile): Promise<void> {
+		await this.renameTargetFile(file, false);
+	}
+
 	private getSelection(): { selection: string; editor: Editor | null } {
 		let selection = '';
 		let editor: Editor | null = null;
