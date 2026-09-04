@@ -1,4 +1,5 @@
 import { App, Editor, Notice, TFile, normalizePath } from 'obsidian';
+import type F2RenamePlugin from './main';
 import { promptRename } from './ui/rename-prompt-modal';
 import {
 	isExcalidrawFile,
@@ -9,9 +10,14 @@ import {
 } from './utils/embed';
 
 export class RenameService {
-	constructor(private readonly app: App) {}
+	constructor(private readonly plugin: F2RenamePlugin) {}
+
+	private get app(): App {
+		return this.plugin.app;
+	}
 
 	async run(): Promise<void> {
+		const { settings } = this.plugin;
 		const file = this.app.workspace.getActiveFile();
 		if (!file) {
 			new Notice('没有打开的文件');
@@ -21,7 +27,11 @@ export class RenameService {
 		const { selection, editor } = this.getSelection();
 
 		if (selection) {
-			if (/^#+\s/.test(selection.trim()) && editor) {
+			if (
+				settings.renameHeadings &&
+				/^#+\s/.test(selection.trim()) &&
+				editor
+			) {
 				// `commands` exists at runtime; not always typed on App
 				(
 					this.app as App & {
@@ -31,18 +41,20 @@ export class RenameService {
 				return;
 			}
 
-			const embed = matchSelectionEmbed(selection);
-			if (embed) {
-				const target = resolveEmbedFile(
-					this.app,
-					embed.linkpath,
-					file.path,
-				);
-				if (target) {
-					await this.renameTargetFile(target, true);
-					return;
+			if (settings.renameEmbeds) {
+				const embed = matchSelectionEmbed(selection);
+				if (embed) {
+					const target = resolveEmbedFile(
+						this.app,
+						embed.linkpath,
+						file.path,
+					);
+					if (target) {
+						await this.renameTargetFile(target, true);
+						return;
+					}
+					new Notice(`❌未找到文件: ${embed.linkpath}`);
 				}
-				new Notice(`❌未找到文件: ${embed.linkpath}`);
 			}
 		}
 
@@ -77,6 +89,7 @@ export class RenameService {
 		target: TFile,
 		isEmbed: boolean,
 	): Promise<void> {
+		const { settings } = this.plugin;
 		const excalidraw = isExcalidrawFile(target);
 		const displayBase = excalidraw
 			? stripExcalidrawBasename(target.basename)
@@ -102,9 +115,11 @@ export class RenameService {
 
 		if (newPath === target.path) return;
 
-		const companions = this.findCompanions(target);
+		const companions = settings.renameCompanions
+			? this.findCompanions(target)
+			: [];
 
-		if (!isEmbed) {
+		if (!isEmbed && settings.copyNameToClipboard) {
 			await navigator.clipboard.writeText(newBase).catch(() => undefined);
 		}
 
