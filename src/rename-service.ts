@@ -132,7 +132,7 @@ export class RenameService {
 
 		const result = await promptRename(
 			this.app,
-			'🔗编辑链接',
+			'编辑链接',
 			embed.linkpathRaw,
 			{
 				mode: 'url',
@@ -180,7 +180,7 @@ export class RenameService {
 
 		const kindLabel = target
 			? this.describeFileKind(target, true, excalidraw)
-			: '🗳重命名嵌入链接';
+			: '重命名嵌入链接';
 
 		const properties =
 			canEditProperties && target
@@ -522,14 +522,14 @@ export class RenameService {
 	): string {
 		if (excalidraw) {
 			return isEmbed
-				? '🗳重命名嵌入的 Excalidraw 文件'
-				: '🎨重命名 Excalidraw 文件';
+				? '重命名嵌入的 Excalidraw 文件'
+				: '重命名 Excalidraw 文件';
 		}
 		if (isEmbed) {
 			const ext = file.extension ? `.${file.extension}` : '';
-			return `🗳重命名嵌入的 ${ext || '文件'}`;
+			return `重命名嵌入的 ${ext || '文件'}`;
 		}
-		return '📄重命名当前文档';
+		return '重命名文件';
 	}
 
 	/**
