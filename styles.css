@@ -672,12 +672,27 @@
 
 .f2-rename-footer {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: space-between;
 	align-items: center;
-	gap: 0.5rem;
+	gap: 0.75rem;
 	padding: 0.85rem 1.25rem 1.1rem;
 	border-top: 1px solid var(--background-modifier-border);
 	border-radius: 0 0 var(--modal-radius) var(--modal-radius);
+}
+
+.f2-rename-footer-left,
+.f2-rename-footer-right {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.f2-rename-footer-left {
+	flex-wrap: wrap;
+}
+
+.f2-rename-footer-right {
+	margin-left: auto;
 }
 
 .f2-rename-btn {

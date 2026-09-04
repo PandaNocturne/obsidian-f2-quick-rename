@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TFile, setIcon } from 'obsidian';
+import { App, Modal, Notice, TFile, normalizePath, setIcon } from 'obsidian';
 import type {
 	PropertyFieldState,
 	PropertyPanelItem,
@@ -213,15 +213,38 @@ export class RenamePromptModal extends Modal {
 		}
 
 		const footer = contentEl.createDiv({ cls: 'f2-rename-footer' });
-		const cancelBtn = footer.createEl('button', {
+		const left = footer.createDiv({ cls: 'f2-rename-footer-left' });
+		const right = footer.createDiv({ cls: 'f2-rename-footer-right' });
+
+		const copyPathBtn = left.createEl('button', {
+			text: '复制路径',
+			cls: 'f2-rename-btn',
+			attr: { type: 'button' },
+		});
+		copyPathBtn.addEventListener('click', () => {
+			void this.copyText(this.getCopyPath(), '路径');
+		});
+
+		const copyTitleBtn = left.createEl('button', {
+			text: '复制标题',
+			cls: 'f2-rename-btn',
+			attr: { type: 'button' },
+		});
+		copyTitleBtn.addEventListener('click', () => {
+			void this.copyText(this.getCopyTitle(), '标题');
+		});
+
+		const cancelBtn = right.createEl('button', {
 			text: '取消',
 			cls: 'f2-rename-btn',
+			attr: { type: 'button' },
 		});
 		cancelBtn.addEventListener('click', () => this.submit(null));
 
-		const confirmBtn = footer.createEl('button', {
-			text: isUrl ? '保存' : '重命名',
+		const confirmBtn = right.createEl('button', {
+			text: '确认',
 			cls: 'f2-rename-btn f2-rename-btn-primary mod-cta',
+			attr: { type: 'button' },
 		});
 		confirmBtn.addEventListener('click', () => this.submitResult());
 
@@ -967,6 +990,55 @@ export class RenamePromptModal extends Modal {
 			this.propertySaveTimer = null;
 		}
 		await this.options.onPropertiesChange({ ...this.propertyValues });
+	}
+
+	private getCopyPath(): string {
+		if (this.options.mode === 'url') {
+			return this.value.trim();
+		}
+
+		const name = this.value.trim();
+		const ext = this.options.extension ?? '';
+		const file = this.options.relatedFile;
+		if (file) {
+			const parent = file.parent?.path ?? '';
+			const leaf = `${name || file.basename}${ext}`;
+			return normalizePath(parent ? `${parent}/${leaf}` : leaf);
+		}
+
+		if (name) {
+			return `${name}${ext}`;
+		}
+		return this.options.sourcePath?.trim() ?? '';
+	}
+
+	private getCopyTitle(): string {
+		if (this.options.mode === 'url') {
+			return this.aliasValue.trim() || this.value.trim();
+		}
+
+		const titleProp = this.propertyValues.title;
+		if (typeof titleProp === 'string' && titleProp.trim()) {
+			return titleProp.trim();
+		}
+		if (this.aliasValue.trim()) {
+			return this.aliasValue.trim();
+		}
+		return this.value.trim();
+	}
+
+	private async copyText(text: string, label: string): Promise<void> {
+		const value = text.trim();
+		if (!value) {
+			new Notice(`${label}为空，无法复制`);
+			return;
+		}
+		try {
+			await navigator.clipboard.writeText(value);
+			new Notice(`已复制${label}`);
+		} catch {
+			new Notice(`复制${label}失败`);
+		}
 	}
 
 	private submitResult(): void {
