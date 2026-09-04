@@ -1,4 +1,5 @@
 import { Plugin, TFile } from 'obsidian';
+import { setLocalePreference, t } from './i18n';
 import { RenameService } from './rename-service';
 import {
 	DEFAULT_PROPERTY_FIELDS,
@@ -15,6 +16,15 @@ export default class F2RenamePlugin extends Plugin {
 	async onload() {
 		const saved = (await this.loadData()) as Partial<F2RenameSettings> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, saved);
+		if (
+			this.settings.locale !== 'system' &&
+			this.settings.locale !== 'zh-CN' &&
+			this.settings.locale !== 'en'
+		) {
+			this.settings.locale = DEFAULT_SETTINGS.locale;
+		}
+		setLocalePreference(this.settings.locale);
+
 		if (!Array.isArray(this.settings.propertyFields)) {
 			this.settings.propertyFields = DEFAULT_PROPERTY_FIELDS.map((item) =>
 				normalizePropertySettingsItem(item),
@@ -29,7 +39,7 @@ export default class F2RenamePlugin extends Plugin {
 
 		this.addCommand({
 			id: 'f2-rename',
-			name: '重命名文件或嵌入',
+			name: t('commands.renameFileOrEmbed'),
 			hotkeys: [{ modifiers: [], key: 'F2' }],
 			callback: () => {
 				void this.renameService.run();
@@ -38,7 +48,7 @@ export default class F2RenamePlugin extends Plugin {
 
 		this.addCommand({
 			id: 'f5-full-properties',
-			name: '重命名并编辑全部属性',
+			name: t('commands.renameAndEditAllProperties'),
 			hotkeys: [{ modifiers: [], key: 'F5' }],
 			callback: () => {
 				void this.renameService.runFullProperties();
@@ -50,7 +60,7 @@ export default class F2RenamePlugin extends Plugin {
 				if (!(file instanceof TFile)) return;
 				menu.addItem((item) => {
 					item
-						.setTitle('F2 重命名')
+						.setTitle(t('menu.f2Rename'))
 						.setIcon('pencil')
 						.onClick(() => {
 							void this.renameService.runForFile(file);
@@ -63,6 +73,7 @@ export default class F2RenamePlugin extends Plugin {
 	}
 
 	async saveSettings(): Promise<void> {
+		setLocalePreference(this.settings.locale);
 		await this.saveData(this.settings);
 	}
 

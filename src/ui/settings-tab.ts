@@ -1,4 +1,5 @@
 import { App, Modal, PluginSettingTab, Setting, setIcon } from 'obsidian';
+import { t, type LocalePreference, type TranslationKey } from '../i18n';
 import type F2RenamePlugin from '../main';
 import {
 	DEFAULT_PROPERTY_FIELDS,
@@ -6,6 +7,7 @@ import {
 	clonePropertySettingsItem,
 	isPropertyField,
 	isPropertyRow,
+	propertyTypeLabel,
 	type F2RenameSettings,
 	type PropertyFieldConfig,
 	type PropertyFieldType,
@@ -36,7 +38,7 @@ class ConfirmModal extends Modal {
 
 		new Setting(contentEl)
 			.addButton((btn) =>
-				btn.setButtonText('取消').onClick(() => this.close()),
+				btn.setButtonText(t('common.cancel')).onClick(() => this.close()),
 			)
 			.addButton((btn) =>
 				btn
@@ -61,8 +63,8 @@ type ToggleKey = {
 
 interface ToggleOption {
 	key: ToggleKey;
-	name: string;
-	desc: string;
+	nameKey: TranslationKey;
+	descKey: TranslationKey;
 }
 
 /** Drag payload for nested property settings list. */
@@ -73,43 +75,43 @@ type DragPath =
 const TOGGLE_OPTIONS: ToggleOption[] = [
 	{
 		key: 'renameEmbeds',
-		name: '重命名嵌入文件',
-		desc: '光标落在 wiki / Markdown 嵌入上时，重命名被嵌入的文件，而不是当前笔记。',
+		nameKey: 'settings.features.renameEmbeds.name',
+		descKey: 'settings.features.renameEmbeds.desc',
 	},
 	{
 		key: 'editEmbedAlias',
-		name: '编辑嵌入别名',
-		desc: '重命名嵌入时显示别名字段，可修改 ![[文件|别名]] 或 ![别名](文件) 的显示名。',
+		nameKey: 'settings.features.editEmbedAlias.name',
+		descKey: 'settings.features.editEmbedAlias.desc',
 	},
 	{
 		key: 'renameHeadings',
-		name: '重命名标题',
-		desc: '选中或光标所在行为标题时，调用 Obsidian 自带的「重命名标题」。',
+		nameKey: 'settings.features.renameHeadings.name',
+		descKey: 'settings.features.renameHeadings.desc',
 	},
 	{
 		key: 'renameCompanions',
-		name: '连带重命名同名文件',
-		desc: '同文件夹、同主文件名、不同扩展名的文件一并重命名（例如 note.md 与 note.canvas）。',
+		nameKey: 'settings.features.renameCompanions.name',
+		descKey: 'settings.features.renameCompanions.desc',
 	},
 	{
 		key: 'copyNameToClipboard',
-		name: '复制新名称到剪贴板',
-		desc: '重命名当前打开的笔记后，将新主文件名写入剪贴板（重命名嵌入时不复制）。',
+		nameKey: 'settings.features.copyNameToClipboard.name',
+		descKey: 'settings.features.copyNameToClipboard.desc',
 	},
 	{
 		key: 'editProperties',
-		name: '编辑文档属性',
-		desc: '重命名当前笔记或可识别的嵌入 Markdown 文档时，在「更多」中编辑配置的 frontmatter 属性。',
+		nameKey: 'settings.features.editProperties.name',
+		descKey: 'settings.features.editProperties.desc',
 	},
 	{
 		key: 'autoSaveProperties',
-		name: '属性编辑自动保存',
-		desc: '在「更多」中修改属性后立即写入笔记，无需点击确认。关闭后需点击「确认」才会保存属性。',
+		nameKey: 'settings.features.autoSaveProperties.name',
+		descKey: 'settings.features.autoSaveProperties.desc',
 	},
 	{
 		key: 'editExtension',
-		name: '双击修改扩展名',
-		desc: '开启后，可在重命名面板中双击文件名后的扩展名进行编辑（例如 .md）。默认关闭。',
+		nameKey: 'settings.features.editExtension.name',
+		descKey: 'settings.features.editExtension.desc',
 	},
 ];
 
@@ -129,17 +131,37 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		containerEl.empty();
 		this.dragPath = null;
 
-		new Setting(containerEl).setName('功能开关').setHeading();
+		new Setting(containerEl).setName(t('settings.basic.heading')).setHeading();
+
+		new Setting(containerEl)
+			.setName(t('settings.basic.locale.name'))
+			.setDesc(t('settings.basic.locale.desc'))
+			.addDropdown((dd) =>
+				dd
+					.addOption('system', t('settings.basic.locale.system'))
+					.addOption('zh-CN', t('settings.basic.locale.zhCN'))
+					.addOption('en', t('settings.basic.locale.en'))
+					.setValue(this.plugin.settings.locale)
+					.onChange(async (value) => {
+						this.plugin.settings.locale = value as LocalePreference;
+						await this.plugin.saveSettings();
+						this.display();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName(t('settings.features.heading'))
+			.setHeading();
 
 		containerEl.createEl('p', {
-			text: '关闭后对应功能不会触发。',
+			text: t('settings.features.intro'),
 			cls: 'setting-item-description',
 		});
 
 		for (const option of TOGGLE_OPTIONS) {
 			new Setting(containerEl)
-				.setName(option.name)
-				.setDesc(option.desc)
+				.setName(t(option.nameKey))
+				.setDesc(t(option.descKey))
 				.addToggle((toggle) =>
 					toggle
 						.setValue(this.plugin.settings[option.key])
@@ -154,13 +176,13 @@ export class F2RenameSettingTab extends PluginSettingTab {
 	}
 
 	private renderPropertyFieldsSection(containerEl: HTMLElement): void {
-		new Setting(containerEl).setName('文档属性').setHeading();
+		new Setting(containerEl)
+			.setName(t('settings.propertyFields.heading'))
+			.setHeading();
 
 		new Setting(containerEl)
-			.setName('默认折叠')
-			.setDesc(
-				'开启后，重命名面板中的属性区域默认折叠。F5 全量属性仍会默认展开。',
-			)
+			.setName(t('settings.propertyFields.defaultCollapsed.name'))
+			.setDesc(t('settings.propertyFields.defaultCollapsed.desc'))
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.propertiesDefaultCollapsed)
@@ -171,7 +193,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			);
 
 		containerEl.createEl('p', {
-			text: '配置重命名面板「更多」中可编辑的属性。拖动调整顺序；可将属性拖入「并排容器」使其在同一行显示。列表开启「提示」后会从库中该属性已有值弹出下拉建议。',
+			text: t('settings.propertyFields.intro'),
 			cls: 'setting-item-description',
 		});
 
@@ -192,52 +214,60 @@ export class F2RenameSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.addButton((btn) =>
-				btn.setButtonText('添加属性').onClick(async () => {
-					this.plugin.settings.propertyFields.push(
-						this.createEmptyField(),
-					);
-					await this.plugin.saveSettings();
-					this.display();
-				}),
+				btn
+					.setButtonText(t('settings.propertyFields.addProperty'))
+					.onClick(async () => {
+						this.plugin.settings.propertyFields.push(
+							this.createEmptyField(),
+						);
+						await this.plugin.saveSettings();
+						this.display();
+					}),
 			)
 			.addButton((btn) =>
-				btn.setButtonText('添加分隔符').onClick(async () => {
-					this.plugin.settings.propertyFields.push({
-						kind: 'separator',
-						label: '',
-					});
-					await this.plugin.saveSettings();
-					this.display();
-				}),
+				btn
+					.setButtonText(t('settings.propertyFields.addSeparator'))
+					.onClick(async () => {
+						this.plugin.settings.propertyFields.push({
+							kind: 'separator',
+							label: '',
+						});
+						await this.plugin.saveSettings();
+						this.display();
+					}),
 			)
 			.addButton((btn) =>
-				btn.setButtonText('添加并排容器').onClick(async () => {
-					this.plugin.settings.propertyFields.push({
-						kind: 'row',
-						label: '',
-						children: [],
-					});
-					await this.plugin.saveSettings();
-					this.display();
-				}),
+				btn
+					.setButtonText(t('settings.propertyFields.addRow'))
+					.onClick(async () => {
+						this.plugin.settings.propertyFields.push({
+							kind: 'row',
+							label: '',
+							children: [],
+						});
+						await this.plugin.saveSettings();
+						this.display();
+					}),
 			)
 			.addButton((btn) =>
-				btn.setButtonText('恢复默认').onClick(() => {
-					new ConfirmModal(
-						this.app,
-						'恢复默认文档属性？',
-						'将清除当前属性配置（含顺序、分隔符与并排容器），并恢复为默认的 title / aliases / tags。此操作不可撤销。',
-						'确认恢复',
-						async () => {
-							this.plugin.settings.propertyFields =
-								DEFAULT_PROPERTY_FIELDS.map((item) =>
-									clonePropertySettingsItem(item),
-								);
-							await this.plugin.saveSettings();
-							this.display();
-						},
-					).open();
-				}),
+				btn
+					.setButtonText(t('settings.propertyFields.resetDefaults'))
+					.onClick(() => {
+						new ConfirmModal(
+							this.app,
+							t('settings.propertyFields.resetConfirm.title'),
+							t('settings.propertyFields.resetConfirm.message'),
+							t('settings.propertyFields.resetConfirm.confirm'),
+							async () => {
+								this.plugin.settings.propertyFields =
+									DEFAULT_PROPERTY_FIELDS.map((item) =>
+										clonePropertySettingsItem(item),
+									);
+								await this.plugin.saveSettings();
+								this.display();
+							},
+						).open();
+					}),
 			);
 	}
 
@@ -280,7 +310,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 
 		const keyInput = this.createLabeledInput(
 			line,
-			'属性名',
+			t('settings.propertyFields.keyLabel'),
 			field.key,
 			async (value) => {
 				field.key = value.trim();
@@ -288,7 +318,10 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			},
 		);
 		keyInput.addClass('f2-rename-setting-key');
-		keyInput.setAttr('placeholder', '从库中选择或输入');
+		keyInput.setAttr(
+			'placeholder',
+			t('settings.propertyFields.keyPlaceholder'),
+		);
 		new PropertyKeySuggest(this.app, keyInput, (key) => {
 			field.key = key;
 			const mapped = resolvePropertyFieldType(this.app, key);
@@ -315,7 +348,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			cls: 'f2-rename-setting-labeled',
 		});
 		typeWrap.createSpan({
-			text: '类型',
+			text: t('settings.propertyFields.typeLabel'),
 			cls: 'f2-rename-setting-inline-label',
 		});
 		const select = typeWrap.createEl('select', {
@@ -323,7 +356,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		});
 		for (const opt of PROPERTY_TYPE_OPTIONS) {
 			select.createEl('option', {
-				text: opt.label,
+				text: propertyTypeLabel(opt.type),
 				attr: { value: opt.type },
 			});
 		}
@@ -344,7 +377,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 
 		this.createLabeledInput(
 			line,
-			'别名',
+			t('settings.propertyFields.aliasLabel'),
 			field.label ?? '',
 			async (value) => {
 				field.label = value;
@@ -357,7 +390,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 				cls: 'f2-rename-setting-labeled f2-rename-setting-hint-toggle',
 			});
 			hintToggle.createSpan({
-				text: '提示',
+				text: t('settings.propertyFields.showHintLabel'),
 				cls: 'f2-rename-setting-inline-label',
 			});
 			const checkbox = hintToggle.createEl('input', {
@@ -376,7 +409,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 				cls: 'f2-rename-setting-labeled f2-rename-setting-multiline-toggle',
 			});
 			multiToggle.createSpan({
-				text: '多行',
+				text: t('settings.propertyFields.multilineLabel'),
 				cls: 'f2-rename-setting-inline-label',
 			});
 			const checkbox = multiToggle.createEl('input', {
@@ -415,13 +448,13 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		});
 
 		line.createSpan({
-			text: '分隔符',
+			text: t('settings.propertyFields.separatorBadge'),
 			cls: 'f2-rename-setting-separator-badge',
 		});
 
 		this.createLabeledInput(
 			line,
-			'标题（可选）',
+			t('settings.propertyFields.separatorTitleLabel'),
 			item.label ?? '',
 			async (value) => {
 				item.label = value;
@@ -455,13 +488,13 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			cls: 'f2-rename-setting-row-header-main',
 		});
 		headerMain.createSpan({
-			text: '并排容器',
+			text: t('settings.propertyFields.rowBadge'),
 			cls: 'f2-rename-setting-row-badge',
 		});
 
 		const addBtn = headerMain.createEl('button', {
 			cls: 'mod-cta f2-rename-setting-row-add',
-			text: '添加属性',
+			text: t('settings.propertyFields.addProperty'),
 			attr: { type: 'button' },
 		});
 		addBtn.addEventListener('click', () => {
@@ -484,7 +517,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		if (item.children.length === 0) {
 			body.createDiv({
 				cls: 'f2-rename-setting-row-empty',
-				text: '拖入属性到此处，或点击「添加属性」',
+				text: t('settings.propertyFields.rowEmptyHint'),
 			});
 		}
 
@@ -504,8 +537,8 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		const handle = row.createDiv({
 			cls: 'f2-rename-setting-drag-handle',
 			attr: {
-				title: '拖动排序',
-				'aria-label': '拖动排序',
+				title: t('common.dragToReorder'),
+				'aria-label': t('common.dragToReorder'),
 			},
 		});
 		setIcon(handle, 'grip-vertical');
@@ -520,7 +553,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			cls: 'clickable-icon f2-rename-setting-remove',
 			attr: {
 				type: 'button',
-				'aria-label': '移除',
+				'aria-label': t('common.remove'),
 			},
 		});
 		setIcon(btn, 'trash-2');

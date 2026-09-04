@@ -1,6 +1,8 @@
 import { App, Menu, Notice, setIcon } from 'obsidian';
+import { t } from '../i18n';
 import {
 	PROPERTY_TYPE_OPTIONS,
+	propertyTypeLabel,
 	type PropertyFieldState,
 	type PropertyFieldType,
 	type PropertyValue,
@@ -149,8 +151,8 @@ export class FullPropertiesPanel {
 			cls: 'f2-full-props-handle',
 			attr: {
 				draggable: 'true',
-				title: '拖动排序',
-				'aria-label': '拖动排序',
+				title: t('common.dragToReorder'),
+				'aria-label': t('common.dragToReorder'),
 			},
 		});
 		setIcon(handle, 'grip-vertical');
@@ -159,8 +161,8 @@ export class FullPropertiesPanel {
 			cls: 'f2-full-props-type',
 			attr: {
 				type: 'button',
-				title: '更改类型',
-				'aria-label': '更改类型',
+				title: t('properties.changeType'),
+				'aria-label': t('properties.changeType'),
 			},
 		});
 		const typeMeta = PROPERTY_TYPE_OPTIONS.find(
@@ -178,8 +180,8 @@ export class FullPropertiesPanel {
 				type: 'text',
 				spellcheck: 'false',
 				autocomplete: 'off',
-				placeholder: '属性名',
-				'aria-label': '属性名',
+				placeholder: t('properties.keyPlaceholder'),
+				'aria-label': t('properties.keyPlaceholder'),
 			},
 		});
 		keyInput.value = field.key;
@@ -207,8 +209,8 @@ export class FullPropertiesPanel {
 			cls: 'f2-full-props-remove',
 			attr: {
 				type: 'button',
-				title: '删除属性',
-				'aria-label': '删除属性',
+				title: t('properties.deleteProperty'),
+				'aria-label': t('properties.deleteProperty'),
 			},
 		});
 		setIcon(removeBtn, 'x');
@@ -337,7 +339,7 @@ export class FullPropertiesPanel {
 			attr: {
 				rows: String(estimateMultilineRows(text)),
 				spellcheck: 'false',
-				placeholder: '没有值',
+				placeholder: t('properties.noValuePlaceholder'),
 				wrap: 'soft',
 			},
 		});
@@ -381,7 +383,7 @@ export class FullPropertiesPanel {
 			attr: {
 				spellcheck: 'false',
 				autocomplete: 'off',
-				placeholder: '没有值',
+				placeholder: t('properties.noValuePlaceholder'),
 			},
 		});
 		input.value = text;
@@ -438,7 +440,7 @@ export class FullPropertiesPanel {
 			attr: {
 				spellcheck: 'false',
 				autocomplete: 'off',
-				placeholder: '输入后回车添加',
+				placeholder: t('properties.listAddPlaceholder'),
 				'data-property-type': field.key,
 			},
 		});
@@ -464,7 +466,7 @@ export class FullPropertiesPanel {
 				const chip = chips.createSpan({
 					cls: 'f2-rename-chip',
 					attr: {
-						title: '双击编辑',
+						title: t('tooltip.doubleClickToEdit'),
 						'data-property-type': field.key,
 					},
 				});
@@ -475,7 +477,7 @@ export class FullPropertiesPanel {
 
 				const remove = chip.createEl('button', {
 					cls: 'f2-rename-chip-remove',
-					attr: { type: 'button', 'aria-label': '移除' },
+					attr: { type: 'button', 'aria-label': t('common.remove') },
 				});
 				setIcon(remove, 'x');
 				remove.addEventListener('click', (evt) => {
@@ -526,7 +528,7 @@ export class FullPropertiesPanel {
 							);
 							if (duplicate) {
 								closed = false;
-								new Notice('列表中已存在相同项');
+								new Notice(t('notice.duplicateListItem'));
 								textEl.focus();
 								return;
 							}
@@ -628,7 +630,7 @@ export class FullPropertiesPanel {
 		const menu = new Menu();
 		for (const option of PROPERTY_TYPE_OPTIONS) {
 			menu.addItem((item) => {
-				item.setTitle(option.label)
+				item.setTitle(propertyTypeLabel(option.type))
 					.setIcon(option.icon)
 					.setChecked(option.type === field.type)
 					.onClick(() => this.setType(index, option.type));
