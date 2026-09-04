@@ -20,7 +20,7 @@ export const PROPERTY_TYPE_OPTIONS: PropertyTypeOption[] = [
 	{ type: 'date', label: '日期', icon: 'calendar' },
 	{ type: 'datetime', label: '日期 & 时间', icon: 'clock' },
 	{ type: 'list', label: '列表', icon: 'list' },
-	{ type: 'number', label: '数字', icon: 'hash' },
+	{ type: 'number', label: '数字', icon: 'binary' },
 	{ type: 'text', label: '文本', icon: 'align-left' },
 ];
 
