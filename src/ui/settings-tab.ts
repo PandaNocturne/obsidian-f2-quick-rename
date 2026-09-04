@@ -229,6 +229,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			type: 'text',
 			label: '',
 			showHint: false,
+			multiline: false,
 		};
 	}
 
@@ -276,8 +277,9 @@ export class F2RenameSettingTab extends PluginSettingTab {
 				field.type = mapped;
 				if (mapped !== 'list') {
 					field.showHint = false;
-				} else if (field.showHint == null) {
-					field.showHint = false;
+				}
+				if (mapped !== 'text') {
+					field.multiline = false;
 				}
 			}
 			if (!field.label?.trim()) {
@@ -313,6 +315,9 @@ export class F2RenameSettingTab extends PluginSettingTab {
 				if (field.type !== 'list') {
 					field.showHint = false;
 				}
+				if (field.type !== 'text') {
+					field.multiline = false;
+				}
 				await this.plugin.saveSettings();
 				this.display();
 			})();
@@ -343,6 +348,25 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			checkbox.checked = field.showHint === true;
 			checkbox.addEventListener('change', () => {
 				field.showHint = checkbox.checked;
+				void this.plugin.saveSettings();
+			});
+		}
+
+		if (field.type === 'text') {
+			const multiToggle = line.createDiv({
+				cls: 'f2-rename-setting-labeled f2-rename-setting-multiline-toggle',
+			});
+			multiToggle.createSpan({
+				text: '多行',
+				cls: 'f2-rename-setting-inline-label',
+			});
+			const checkbox = multiToggle.createEl('input', {
+				type: 'checkbox',
+				cls: 'f2-rename-setting-multiline',
+			});
+			checkbox.checked = field.multiline === true;
+			checkbox.addEventListener('change', () => {
+				field.multiline = checkbox.checked;
 				void this.plugin.saveSettings();
 			});
 		}

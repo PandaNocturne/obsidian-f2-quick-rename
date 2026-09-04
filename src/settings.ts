@@ -36,6 +36,11 @@ export interface PropertyFieldConfig {
 	 * Defaults to false.
 	 */
 	showHint?: boolean;
+	/**
+	 * Whether text inputs use a multiline textarea.
+	 * Defaults to false.
+	 */
+	multiline?: boolean;
 }
 
 export interface PropertySeparatorConfig {
@@ -64,6 +69,7 @@ export interface PropertyFieldState {
 	type: PropertyFieldType;
 	label: string;
 	showHint: boolean;
+	multiline: boolean;
 	value: PropertyValue;
 }
 
@@ -98,7 +104,14 @@ export interface F2RenameSettings {
 }
 
 export const DEFAULT_PROPERTY_FIELDS: PropertySettingsItem[] = [
-	{ kind: 'field', key: 'title', type: 'text', label: 'title', showHint: false },
+	{
+		kind: 'field',
+		key: 'title',
+		type: 'text',
+		label: 'title',
+		showHint: false,
+		multiline: false,
+	},
 	{
 		kind: 'field',
 		key: 'aliases',
@@ -168,6 +181,7 @@ export function normalizePropertyFieldConfig(
 			: 'text') as PropertyFieldType,
 		label: typeof record.label === 'string' ? record.label : '',
 		showHint: record.showHint === true,
+		multiline: record.multiline === true,
 	};
 }
 

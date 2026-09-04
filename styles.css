@@ -83,6 +83,20 @@
 	min-width: 0;
 }
 
+.f2-rename-field-multiline {
+	align-items: flex-start;
+}
+
+.f2-rename-field-multiline .f2-rename-label {
+	padding-top: 0.45rem;
+}
+
+.f2-rename-textarea {
+	min-height: 4.5rem;
+	resize: vertical;
+	line-height: 1.45;
+}
+
 .f2-rename-input {
 	box-sizing: border-box;
 	flex: 1;
@@ -547,7 +561,8 @@
 	width: 7rem;
 }
 
-.f2-rename-setting-hint-toggle .f2-rename-setting-show-hint {
+.f2-rename-setting-hint-toggle .f2-rename-setting-show-hint,
+.f2-rename-setting-multiline-toggle .f2-rename-setting-multiline {
 	margin: 0;
 }
 

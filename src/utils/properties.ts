@@ -52,7 +52,8 @@ export function readPropertyValue(
 		case 'number': {
 			if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
 			if (Array.isArray(raw)) {
-				const first = raw.find(
+				const items = raw as unknown[];
+				const first = items.find(
 					(item) =>
 						typeof item === 'number' ||
 						(typeof item === 'string' && item.trim() !== ''),
@@ -151,6 +152,7 @@ function toFieldState(
 		type: item.type,
 		label: item.label?.trim() || key,
 		showHint: item.showHint === true,
+		multiline: item.type === 'text' && item.multiline === true,
 		value: readPropertyValue(readFrontmatterValue(frontmatter, key), item.type),
 	};
 }

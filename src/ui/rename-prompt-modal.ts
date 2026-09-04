@@ -344,14 +344,58 @@ export class RenamePromptModal extends Modal {
 				break;
 			case 'text':
 			default:
-				this.renderInputProperty(
-					parent,
-					field,
-					'text',
-					typeMeta?.icon,
-				);
+				if (field.multiline) {
+					this.renderMultilineTextField(
+						parent,
+						field,
+						typeMeta?.icon,
+					);
+				} else {
+					this.renderInputProperty(
+						parent,
+						field,
+						'text',
+						typeMeta?.icon,
+					);
+				}
 				break;
 		}
+	}
+
+	private renderMultilineTextField(
+		parent: HTMLElement,
+		field: PropertyFieldState,
+		icon?: string,
+	): void {
+		const row = this.createPropertyRow(parent, field, icon);
+		row.addClass('f2-rename-field-multiline');
+		const control = row.createDiv({ cls: 'f2-rename-control' });
+		const textarea = control.createEl('textarea', {
+			cls: 'f2-rename-input f2-rename-textarea',
+			attr: {
+				id: `f2-prop-${field.key}`,
+				spellcheck: 'false',
+				rows: '3',
+				...(field.showHint && field.label
+					? { placeholder: field.label }
+					: {}),
+			},
+		});
+		const current = this.propertyValues[field.key];
+		textarea.value = current == null ? '' : String(current);
+		textarea.addEventListener('input', () => {
+			this.propertyValues[field.key] = textarea.value;
+			this.schedulePersistProperties();
+		});
+		textarea.addEventListener('change', () => {
+			void this.persistProperties(true);
+		});
+		textarea.addEventListener('keydown', (evt) => {
+			if (evt.key === 'Escape') {
+				evt.preventDefault();
+				this.submit(null);
+			}
+		});
 	}
 
 	private renderCheckboxField(
