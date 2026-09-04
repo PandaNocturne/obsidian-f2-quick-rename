@@ -14,11 +14,14 @@ import {
 	stripExcalidrawBasename,
 } from './utils/embed';
 import {
+	buildFullPropertyStates,
 	buildPropertyPanelItems,
+	writeFullFrontmatter,
 	writePropertyValues,
 } from './utils/properties';
 import {
 	hasConfiguredPropertyFields,
+	type PropertyFieldState,
 	type PropertyValue,
 } from './settings';
 
@@ -77,6 +80,23 @@ export class RenameService {
 	/** Rename a specific vault file (e.g. from the file explorer context menu). */
 	async runForFile(file: TFile): Promise<void> {
 		await this.renameTargetFile(file, false);
+	}
+
+	/**
+	 * Open the F2 rename window with the full YAML properties panel expanded
+	 * (add / edit / delete / reorder), bound to F5.
+	 */
+	async runFullProperties(): Promise<void> {
+		const file = this.app.workspace.getActiveFile();
+		if (!file) {
+			new Notice('没有打开的文件');
+			return;
+		}
+		if (file.extension !== 'md') {
+			new Notice('仅支持 Markdown 笔记的全属性面板');
+			return;
+		}
+		await this.renameTargetFile(file, false, { fullProperties: true });
 	}
 
 	private getSelection(): { selection: string; editor: Editor | null } {
@@ -253,6 +273,7 @@ export class RenameService {
 	private async renameTargetFile(
 		target: TFile,
 		isEmbed: boolean,
+		options: { fullProperties?: boolean } = {},
 	): Promise<void> {
 		const { settings } = this.plugin;
 		const excalidraw = isExcalidrawFile(target);
@@ -260,14 +281,23 @@ export class RenameService {
 			? stripExcalidrawBasename(target.basename)
 			: target.basename;
 
-		const canEditProperties = this.canEditProperties(target);
-		const properties = canEditProperties
-			? buildPropertyPanelItems(
-					this.app,
-					target,
-					settings.propertyFields,
-				)
+		const useFull = Boolean(
+			options.fullProperties && target.extension === 'md',
+		);
+		const canEditProperties = useFull
+			? true
+			: this.canEditProperties(target);
+		const fullPropertyFields = useFull
+			? buildFullPropertyStates(this.app, target)
 			: undefined;
+		const properties =
+			!useFull && canEditProperties
+				? buildPropertyPanelItems(
+						this.app,
+						target,
+						settings.propertyFields,
+					)
+				: undefined;
 		const autoSaveProperties =
 			canEditProperties && settings.autoSaveProperties;
 
@@ -279,10 +309,18 @@ export class RenameService {
 			relatedFile: target,
 			sourcePath: target.path,
 			properties,
+			fullProperties: fullPropertyFields,
+			propertiesOpen: useFull,
 			autoSaveProperties,
-			onPropertiesChange: autoSaveProperties
-				? (values) => this.applyProperties(target, values)
-				: undefined,
+			onPropertiesChange:
+				autoSaveProperties && !useFull
+					? (values) => this.applyProperties(target, values)
+					: undefined,
+			onFullPropertiesChange:
+				autoSaveProperties && useFull
+					? (fields, values) =>
+							this.applyFullProperties(target, fields, values)
+					: undefined,
 		});
 		if (result === null) return;
 
@@ -304,7 +342,15 @@ export class RenameService {
 			canEditProperties &&
 			!settings.autoSaveProperties
 		) {
-			await this.applyProperties(target, result.properties);
+			if (useFull) {
+				await this.applyFullProperties(
+					target,
+					result.fullPropertyFields ?? [],
+					result.properties,
+				);
+			} else {
+				await this.applyProperties(target, result.properties);
+			}
 		}
 
 		if (!nameChanged) return;
@@ -338,6 +384,20 @@ export class RenameService {
 				this.plugin.settings.propertyFields,
 				values,
 			);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			new Notice(`写入属性失败: ${message}`);
+		}
+	}
+
+	private async applyFullProperties(
+		file: TFile,
+		fields: PropertyFieldState[],
+		values: Record<string, PropertyValue>,
+	): Promise<void> {
+		try {
+			await writeFullFrontmatter(this.app, file, fields, values);
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);

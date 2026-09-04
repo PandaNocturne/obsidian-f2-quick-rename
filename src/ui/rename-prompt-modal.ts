@@ -11,6 +11,7 @@ import {
 	openRelatedFile,
 	type ClassifiedValue,
 } from '../utils/value-links';
+import { FullPropertiesPanel } from './full-properties-panel';
 import {
 	ListValueSuggest,
 	TagInputSuggest,
@@ -31,6 +32,8 @@ export interface RenamePromptResult {
 	extension?: string;
 	/** Frontmatter values keyed by property name. */
 	properties?: Record<string, PropertyValue>;
+	/** Ordered full-properties fields (F5 panel) at submit time. */
+	fullPropertyFields?: PropertyFieldState[];
 }
 
 export interface RenamePromptOptions {
@@ -57,10 +60,22 @@ export interface RenamePromptOptions {
 	relatedFile?: TFile | null;
 	/** Document properties / separators shown under the collapsible “更多” section. */
 	properties?: PropertyPanelItem[];
+	/**
+	 * Full YAML properties editor (all frontmatter keys) with add / delete / reorder.
+	 * When set, replaces the configured “更多” section.
+	 */
+	fullProperties?: PropertyFieldState[];
+	/** Open the properties section by default (F5 uses true). */
+	propertiesOpen?: boolean;
 	/** Persist property edits immediately (default driven by settings). */
 	autoSaveProperties?: boolean;
-	/** Called when properties change and auto-save is enabled. */
+	/** Called when configured (非全量) properties change and auto-save is enabled. */
 	onPropertiesChange?: (
+		values: Record<string, PropertyValue>,
+	) => void | Promise<void>;
+	/** Called when full-properties panel changes (ordered fields + values). */
+	onFullPropertiesChange?: (
+		fields: PropertyFieldState[],
 		values: Record<string, PropertyValue>,
 	) => void | Promise<void>;
 }
@@ -82,6 +97,7 @@ export class RenamePromptModal extends Modal {
 	private inputEl: HTMLInputElement | null = null;
 	private aliasInputEl: HTMLInputElement | null = null;
 	private propertySaveTimer: number | null = null;
+	private fullPropertiesPanel: FullPropertiesPanel | null = null;
 
 	constructor(
 		app: App,
@@ -111,6 +127,9 @@ export class RenamePromptModal extends Modal {
 					);
 				}
 			}
+		}
+		for (const field of options.fullProperties ?? []) {
+			this.propertyValues[field.key] = this.cloneValue(field.value);
 		}
 	}
 
@@ -222,7 +241,10 @@ export class RenamePromptModal extends Modal {
 		}
 
 		const properties = this.options.properties ?? [];
-		if (properties.length > 0) {
+		const fullProperties = this.options.fullProperties;
+		if (fullProperties) {
+			this.renderFullPropertiesSection(body, fullProperties);
+		} else if (properties.length > 0) {
 			this.renderMoreSection(body, properties);
 		}
 
@@ -283,6 +305,11 @@ export class RenamePromptModal extends Modal {
 			window.clearTimeout(this.propertySaveTimer);
 			this.propertySaveTimer = null;
 		}
+		if (this.fullPropertiesPanel) {
+			void this.fullPropertiesPanel.flush();
+			this.fullPropertiesPanel.destroy();
+			this.fullPropertiesPanel = null;
+		}
 		const { contentEl } = this;
 		contentEl.empty();
 		this.inputEl = null;
@@ -293,6 +320,47 @@ export class RenamePromptModal extends Modal {
 		}
 	}
 
+	private renderFullPropertiesSection(
+		parent: HTMLElement,
+		fields: PropertyFieldState[],
+	): void {
+		const details = parent.createEl('details', {
+			cls: 'f2-rename-more f2-rename-more-full',
+		});
+		details.open = this.options.propertiesOpen !== false;
+		const summary = details.createEl('summary', {
+			cls: 'f2-rename-more-summary',
+		});
+		const summaryIcon = summary.createSpan({
+			cls: 'f2-rename-more-chevron',
+		});
+		setIcon(summaryIcon, 'chevron-right');
+		summary.createSpan({ text: '属性' });
+
+		const panel = details.createDiv({ cls: 'f2-rename-more-body' });
+		this.fullPropertiesPanel = new FullPropertiesPanel({
+			app: this.app,
+			fields,
+			sourcePath: this.getSuggestSourcePath(),
+			autoSave: Boolean(
+				this.options.autoSaveProperties &&
+					this.options.onFullPropertiesChange,
+			),
+			onChange: async (nextFields, values) => {
+				for (const [key, value] of Object.entries(values)) {
+					this.propertyValues[key] = this.cloneValue(value);
+				}
+				if (this.options.onFullPropertiesChange) {
+					await this.options.onFullPropertiesChange(
+						nextFields,
+						values,
+					);
+				}
+			},
+		});
+		this.fullPropertiesPanel.mount(panel);
+	}
+
 	private renderMoreSection(
 		parent: HTMLElement,
 		properties: PropertyPanelItem[],
@@ -300,6 +368,9 @@ export class RenamePromptModal extends Modal {
 		const details = parent.createEl('details', {
 			cls: 'f2-rename-more',
 		});
+		if (this.options.propertiesOpen) {
+			details.open = true;
+		}
 		const summary = details.createEl('summary', {
 			cls: 'f2-rename-more-summary',
 		});
@@ -1141,6 +1212,14 @@ export class RenamePromptModal extends Modal {
 			// Flush any pending debounced auto-save before closing.
 			if (this.options.autoSaveProperties) {
 				void this.persistProperties(true);
+			}
+		}
+		if (this.fullPropertiesPanel) {
+			const snapshot = this.fullPropertiesPanel.getSnapshot();
+			result.properties = snapshot.values;
+			result.fullPropertyFields = snapshot.fields;
+			if (this.options.autoSaveProperties) {
+				void this.fullPropertiesPanel.flush();
 			}
 		}
 		this.submit(result);

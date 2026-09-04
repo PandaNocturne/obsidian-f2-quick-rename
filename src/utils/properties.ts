@@ -228,3 +228,119 @@ export async function writePropertyValues(
 		},
 	);
 }
+
+type MetadataTypeManagerLike = {
+	getAssignedWidget?: (key: string) => string | null | undefined;
+};
+
+function widgetToFieldType(widget: string): PropertyFieldType | null {
+	switch (widget) {
+		case 'checkbox':
+			return 'checkbox';
+		case 'number':
+			return 'number';
+		case 'date':
+			return 'date';
+		case 'datetime':
+			return 'datetime';
+		case 'multitext':
+		case 'tags':
+		case 'aliases':
+			return 'list';
+		case 'text':
+			return 'text';
+		default:
+			return null;
+	}
+}
+
+/** Infer a panel field type from vault type memory and/or the stored value. */
+export function inferPropertyType(
+	app: App,
+	key: string,
+	value: unknown,
+): PropertyFieldType {
+	const manager = (
+		app as App & { metadataTypeManager?: MetadataTypeManagerLike }
+	).metadataTypeManager;
+	const assigned = manager?.getAssignedWidget?.(key);
+	if (assigned) {
+		const mapped = widgetToFieldType(assigned);
+		if (mapped) return mapped;
+	}
+
+	const lower = key.trim().toLowerCase();
+	if (lower === 'tags' || lower === 'tag' || lower === 'aliases') {
+		return 'list';
+	}
+	if (typeof value === 'boolean') return 'checkbox';
+	if (typeof value === 'number' && Number.isFinite(value)) return 'number';
+	if (Array.isArray(value)) return 'list';
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return 'date';
+		if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(trimmed)) {
+			return 'datetime';
+		}
+	}
+	return 'text';
+}
+
+/**
+ * Build editable states for every frontmatter key on the note
+ * (Obsidian-style full properties panel).
+ */
+export function buildFullPropertyStates(
+	app: App,
+	file: TFile,
+): PropertyFieldState[] {
+	const frontmatter: Record<string, unknown> = {
+		...(app.metadataCache.getFileCache(file)?.frontmatter ?? {}),
+	};
+	delete (frontmatter as { position?: unknown }).position;
+
+	const fields: PropertyFieldState[] = [];
+	for (const [key, raw] of Object.entries(frontmatter)) {
+		if (!key || key === 'position') continue;
+		const type = inferPropertyType(app, key, raw);
+		fields.push({
+			key,
+			type,
+			label: key,
+			showHint: type === 'list',
+			multiline: false,
+			value: readPropertyValue(raw, type),
+		});
+	}
+	return fields;
+}
+
+/**
+ * Rewrite note frontmatter from an ordered field list (supports add / delete / reorder).
+ */
+export async function writeFullFrontmatter(
+	app: App,
+	file: TFile,
+	fields: PropertyFieldState[],
+	values: Record<string, PropertyValue>,
+): Promise<void> {
+	await app.fileManager.processFrontMatter(
+		file,
+		(frontmatter: Record<string, unknown>) => {
+			for (const key of Object.keys(frontmatter)) {
+				delete frontmatter[key];
+			}
+			for (const field of fields) {
+				const key = field.key.trim();
+				if (!key) continue;
+				const raw =
+					values[key] !== undefined ? values[key] : field.value;
+				const next = normalizePropertyValue(raw, field.type);
+				if (next !== undefined) {
+					frontmatter[key] = next;
+				}
+			}
+		},
+	);
+}
+
