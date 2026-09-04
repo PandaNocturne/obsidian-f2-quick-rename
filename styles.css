@@ -15,7 +15,6 @@
 	align-items: center;
 	gap: 0.65rem;
 	padding: 1.1rem 1.25rem 0.85rem;
-	/* border-bottom: 1px solid var(--background-modifier-border); */
 }
 
 .f2-rename-icon {
@@ -50,25 +49,47 @@
 	padding: 1.1rem 1.25rem;
 }
 
-.f2-rename-field {
+.f2-rename-form {
 	display: flex;
 	flex-direction: column;
-	gap: 0.4rem;
+	gap: 0.75rem;
+	width: 100%;
+}
+
+.f2-rename-field {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 0.75rem;
 	width: 100%;
 }
 
 .f2-rename-label {
+	flex: 0 0 4rem;
+	margin: 0;
 	font-size: var(--font-ui-small);
 	font-weight: var(--font-medium);
 	color: var(--text-muted);
 	letter-spacing: 0.01em;
+	text-align: right;
+	line-height: 1.2;
+}
+
+.f2-rename-control {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: 0.4rem;
+	min-width: 0;
 }
 
 .f2-rename-input {
 	box-sizing: border-box;
+	flex: 1;
 	width: 100%;
+	min-width: 0;
 	margin: 0;
-	padding: 0.65rem 0.8rem;
+	padding: 0.55rem 0.7rem;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-s);
 	background-color: var(--background-modifier-form-field);
@@ -89,6 +110,19 @@
 .f2-rename-input:focus {
 	border-color: var(--interactive-accent);
 	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+
+.f2-rename-ext {
+	flex-shrink: 0;
+	max-width: 8rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	font-family: var(--font-monospace);
+	line-height: 1.2;
+	user-select: none;
 }
 
 /* Slot for upcoming options / toggles */

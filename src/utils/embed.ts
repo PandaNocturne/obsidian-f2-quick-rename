@@ -13,8 +13,8 @@ export interface EmbedMatch {
 	/** Heading fragment including `#`, or empty. */
 	heading: string;
 	/**
-	 * Display alias / alt text.
-	 * `null` = no `|` / empty markdown alt was absent in a wiki sense (no pipe).
+	 * Display alias / alt text / link title.
+	 * `null` = no `|` (wiki) or empty markdown label.
 	 */
 	alias: string | null;
 	/** Raw matched text */
@@ -27,6 +27,15 @@ function decodePath(path: string): string {
 	} catch {
 		return path;
 	}
+}
+
+/** True when the target is an external / schemed URL, not a vault path. */
+export function isWebUrl(linkpath: string): boolean {
+	const path = linkpath.trim();
+	if (!path) return false;
+	if (path.startsWith('//')) return true;
+	// http:, https:, mailto:, obsidian:, etc.
+	return /^[a-z][a-z0-9+.-]*:/i.test(path);
 }
 
 function fromWikiMatch(match: RegExpMatchArray): EmbedMatch | null {
@@ -51,8 +60,13 @@ function fromMarkdownMatch(match: RegExpMatchArray): EmbedMatch | null {
 	const embedPrefix = match[1] === '!' ? '!' : '';
 	const aliasRaw = match[2] ?? '';
 	let linkpathRaw = (match[3] ?? '').trim();
+	// Strip optional markdown title: url "title"
 	const titleSep = linkpathRaw.match(/^([^\s]+)(?:\s+".*")?$/);
 	if (titleSep?.[1]) linkpathRaw = titleSep[1];
+	// Angle-bracket URL: <https://...>
+	if (linkpathRaw.startsWith('<') && linkpathRaw.endsWith('>')) {
+		linkpathRaw = linkpathRaw.slice(1, -1).trim();
+	}
 	if (!linkpathRaw) return null;
 	return {
 		kind: 'markdown',
@@ -66,12 +80,12 @@ function fromMarkdownMatch(match: RegExpMatchArray): EmbedMatch | null {
 }
 
 /**
- * Parse wiki embeds/links and markdown images from selection/line text.
+ * Parse wiki embeds/links and markdown images/links from selection/line text.
  * Supports:
  * - `[[note]]` / `[[note|alias]]`
  * - `![[image.png]]` / `![[image.png|alias]]`
  * - `![alias](path.png)` / `![](path.png)`
- * - `[text](path.md)`
+ * - `[title](path.md)` / `[title](https://example.com)`
  */
 export function matchSelectionEmbed(text: string): EmbedMatch | null {
 	const trimmed = text.trim();
@@ -107,25 +121,46 @@ export function matchSelectionEmbed(text: string): EmbedMatch | null {
 	return null;
 }
 
+export interface RebuildEmbedOptions {
+	alias?: string | null;
+	linkpathRaw?: string;
+}
+
 /**
- * Rebuild link source text after an alias edit (path left unchanged).
- * Empty alias removes the wiki pipe / clears markdown alt.
+ * Rebuild link source text. Omit a field to keep the original value.
+ * Empty alias removes the wiki pipe / clears markdown label.
  */
-export function rebuildEmbedWithAlias(
+export function rebuildEmbed(
 	embed: EmbedMatch,
-	newAlias: string | null,
+	opts: RebuildEmbedOptions = {},
 ): string {
-	const alias = newAlias?.trim() ? newAlias.trim() : '';
+	const alias =
+		opts.alias !== undefined
+			? opts.alias?.trim()
+				? opts.alias.trim()
+				: ''
+			: embed.alias?.trim()
+				? embed.alias.trim()
+				: '';
+	const linkpathRaw = opts.linkpathRaw ?? embed.linkpathRaw;
 
 	if (embed.kind === 'wiki') {
-		const target = `${embed.linkpathRaw}${embed.heading}`;
+		const target = `${linkpathRaw}${embed.heading}`;
 		if (alias) {
 			return `${embed.embedPrefix}[[${target}|${alias}]]`;
 		}
 		return `${embed.embedPrefix}[[${target}]]`;
 	}
 
-	return `${embed.embedPrefix}[${alias}](${embed.linkpathRaw})`;
+	return `${embed.embedPrefix}[${alias}](${linkpathRaw})`;
+}
+
+/** @deprecated Use rebuildEmbed */
+export function rebuildEmbedWithAlias(
+	embed: EmbedMatch,
+	newAlias: string | null,
+): string {
+	return rebuildEmbed(embed, { alias: newAlias });
 }
 
 /**
@@ -144,6 +179,8 @@ export function resolveEmbedFile(
 	linkpath: string,
 	sourcePath: string,
 ): TFile | null {
+	if (isWebUrl(linkpath)) return null;
+
 	const cleaned = linkpath.replace(/^\.\//, '').split('#')[0]?.split('|')[0];
 	if (!cleaned) return null;
 
@@ -178,4 +215,28 @@ export function normalizeSpaces(name: string): string {
 export function linkpathDisplayBase(linkpath: string): string {
 	const leaf = linkpath.split(/[/\\]/).pop() ?? linkpath;
 	return leaf.replace(/\.[^.]+$/, '') || leaf;
+}
+
+/**
+ * Extension shown after the filename input (includes leading dot).
+ * Excalidraw notes use `.excalidraw.md` because the prompt edits the stem only.
+ */
+export function displayExtensionSuffix(
+	file: TFile | null,
+	excalidraw = false,
+	fallbackLinkpath?: string,
+): string {
+	if (file) {
+		if (excalidraw || isExcalidrawFile(file)) {
+			if (file.name.endsWith('.excalidraw.md')) return '.excalidraw.md';
+			if (file.extension === 'excalidraw') return '.excalidraw';
+		}
+		return file.extension ? `.${file.extension}` : '';
+	}
+
+	if (!fallbackLinkpath || isWebUrl(fallbackLinkpath)) return '';
+	const leaf = fallbackLinkpath.split(/[/\\]/).pop() ?? fallbackLinkpath;
+	const dot = leaf.indexOf('.');
+	if (dot < 0) return '';
+	return leaf.slice(dot);
 }

@@ -3,11 +3,13 @@ import type F2RenamePlugin from './main';
 import { promptRename } from './ui/rename-prompt-modal';
 import {
 	type EmbedMatch,
+	displayExtensionSuffix,
 	isExcalidrawFile,
+	isWebUrl,
 	linkpathDisplayBase,
 	matchSelectionEmbed,
 	normalizeSpaces,
-	rebuildEmbedWithAlias,
+	rebuildEmbed,
 	resolveEmbedFile,
 	stripExcalidrawBasename,
 } from './utils/embed';
@@ -46,6 +48,10 @@ export class RenameService {
 			if (settings.renameEmbeds) {
 				const embed = matchSelectionEmbed(selection);
 				if (embed) {
+					if (isWebUrl(embed.linkpath)) {
+						await this.renameUrlLink(embed, editor);
+						return;
+					}
 					const target = resolveEmbedFile(
 						this.app,
 						embed.linkpath,
@@ -84,6 +90,43 @@ export class RenameService {
 		return { selection, editor };
 	}
 
+	private async renameUrlLink(
+		embed: EmbedMatch,
+		editor: Editor | null,
+	): Promise<void> {
+		if (!editor) {
+			new Notice('无法编辑链接：当前没有可用的编辑器');
+			return;
+		}
+
+		const result = await promptRename(
+			this.app,
+			'🔗编辑链接',
+			embed.linkpathRaw,
+			{
+				mode: 'url',
+				showAlias: true,
+				alias: embed.alias ?? '',
+				nameLabel: 'URL',
+				aliasLabel: '标题',
+			},
+		);
+		if (result === null) return;
+
+		const newUrl = result.name.trim();
+		const newTitle = normalizeSpaces(result.alias ?? '');
+		if (!newUrl) {
+			new Notice('URL 不能为空');
+			return;
+		}
+
+		const rebuilt = rebuildEmbed(embed, {
+			alias: newTitle.length > 0 ? newTitle : null,
+			linkpathRaw: newUrl,
+		});
+		this.replaceEmbedText(editor, embed.raw, rebuilt);
+	}
+
 	private async renameEmbed(
 		target: TFile | null,
 		embed: EmbedMatch,
@@ -107,8 +150,14 @@ export class RenameService {
 			: '🗳重命名嵌入链接';
 
 		const result = await promptRename(this.app, kindLabel, displayBase, {
+			mode: 'file',
 			showAlias,
 			alias: embed.alias ?? '',
+			extension: displayExtensionSuffix(
+				target,
+				excalidraw,
+				embed.linkpath,
+			),
 		});
 		if (result === null) return;
 
@@ -123,10 +172,9 @@ export class RenameService {
 			newAlias !== (embed.alias ?? '').trim();
 
 		if (aliasChanged && editor) {
-			const rebuilt = rebuildEmbedWithAlias(
-				embed,
-				newAlias.length > 0 ? newAlias : null,
-			);
+			const rebuilt = rebuildEmbed(embed, {
+				alias: newAlias.length > 0 ? newAlias : null,
+			});
 			this.replaceEmbedText(editor, embed.raw, rebuilt);
 		} else if (aliasChanged && !editor) {
 			new Notice('无法编辑别名：当前没有可用的编辑器');
@@ -167,7 +215,9 @@ export class RenameService {
 			: target.basename;
 
 		const kindLabel = this.describeFileKind(target, isEmbed, excalidraw);
-		const result = await promptRename(this.app, kindLabel, displayBase);
+		const result = await promptRename(this.app, kindLabel, displayBase, {
+			extension: displayExtensionSuffix(target, excalidraw),
+		});
 		if (result === null) return;
 
 		let newBase = normalizeSpaces(result.name);

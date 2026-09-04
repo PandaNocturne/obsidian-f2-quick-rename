@@ -2,16 +2,26 @@ import { App, Modal, setIcon } from 'obsidian';
 
 export interface RenamePromptResult {
 	name: string;
-	/** Present when the alias field was shown. */
+	/** Present when the alias/title field was shown. */
 	alias?: string;
 }
 
 export interface RenamePromptOptions {
-	/** Show and prefill the alias field (embed links). */
+	/**
+	 * `file` — filename (+ optional alias) with extension suffix.
+	 * `url` — title + URL fields for markdown web links.
+	 */
+	mode?: 'file' | 'url';
+	/** Show and prefill the alias / title field. */
 	showAlias?: boolean;
 	alias?: string | null;
 	nameLabel?: string;
 	aliasLabel?: string;
+	/**
+	 * File extension shown after the name input (e.g. `.md`, `.png`).
+	 * Include the leading dot. Ignored in `url` mode.
+	 */
+	extension?: string;
 }
 
 /**
@@ -49,42 +59,60 @@ export class RenamePromptModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.modalEl.addClass('f2-rename-modal');
+		if (this.options.mode === 'url') {
+			this.modalEl.addClass('f2-rename-modal-url');
+		}
 
 		const header = contentEl.createDiv({ cls: 'f2-rename-header' });
 		const iconWrap = header.createDiv({ cls: 'f2-rename-icon' });
-		setIcon(iconWrap, 'pencil');
+		setIcon(iconWrap, this.options.mode === 'url' ? 'link' : 'pencil');
 		header.createEl('h2', {
 			text: this.titleText,
 			cls: 'f2-rename-title',
 		});
 
 		const body = contentEl.createDiv({ cls: 'f2-rename-body' });
+		const form = body.createDiv({ cls: 'f2-rename-form' });
 
-		this.inputEl = this.createField(
-			body,
-			{
-				id: 'f2-rename-input',
-				label: this.options.nameLabel ?? '新名称',
-				value: this.defaultValue,
-			},
-			(v) => {
-				this.value = v;
-			},
-		);
+		const isUrl = this.options.mode === 'url';
+		const showAlias = this.options.showAlias ?? isUrl;
 
-		if (this.options.showAlias) {
-			this.aliasInputEl = this.createField(
-				body,
-				{
+		const nameField = {
+			id: 'f2-rename-input',
+			label: this.options.nameLabel ?? (isUrl ? 'URL' : '文件名'),
+			value: this.defaultValue,
+			suffix: isUrl ? undefined : this.options.extension,
+			placeholder: isUrl ? 'https://…' : undefined,
+		};
+
+		const aliasField = showAlias
+			? {
 					id: 'f2-rename-alias-input',
-					label: this.options.aliasLabel ?? '别名',
+					label: this.options.aliasLabel ?? (isUrl ? '标题' : '别名'),
 					value: this.aliasValue,
-					placeholder: '可选，对应 | 后的显示名',
-				},
-				(v) => {
+					placeholder: isUrl
+						? '链接显示标题'
+						: '可选，对应 | 后的显示名',
+				}
+			: null;
+
+		// URL links: 标题 then URL. Files: 文件名 then 别名.
+		if (isUrl && aliasField) {
+			this.aliasInputEl = this.createField(form, aliasField, (v) => {
+				this.aliasValue = v;
+			});
+			this.inputEl = this.createField(form, nameField, (v) => {
+				this.value = v;
+			});
+		} else {
+			this.inputEl = this.createField(form, nameField, (v) => {
+				this.value = v;
+			});
+			if (aliasField) {
+				this.aliasInputEl = this.createField(form, aliasField, (v) => {
 					this.aliasValue = v;
-				},
-			);
+				});
+			}
 		}
 
 		body.createDiv({ cls: 'f2-rename-options' });
@@ -97,16 +125,20 @@ export class RenamePromptModal extends Modal {
 		cancelBtn.addEventListener('click', () => this.submit(null));
 
 		const confirmBtn = footer.createEl('button', {
-			text: '重命名',
+			text: isUrl ? '保存' : '重命名',
 			cls: 'f2-rename-btn f2-rename-btn-primary mod-cta',
 		});
 		confirmBtn.addEventListener('click', () => this.submitResult());
 
 		window.setTimeout(() => {
-			const focusEl =
-				this.options.showAlias && this.aliasValue
+			let focusEl = this.inputEl;
+			if (isUrl) {
+				focusEl = this.aliasValue
 					? (this.aliasInputEl ?? this.inputEl)
 					: this.inputEl;
+			} else if (showAlias && this.aliasValue) {
+				focusEl = this.aliasInputEl ?? this.inputEl;
+			}
 			focusEl?.focus();
 			focusEl?.select();
 		}, 50);
@@ -130,6 +162,7 @@ export class RenamePromptModal extends Modal {
 			label: string;
 			value: string;
 			placeholder?: string;
+			suffix?: string;
 		},
 		onInput: (value: string) => void,
 	): HTMLInputElement {
@@ -140,7 +173,8 @@ export class RenamePromptModal extends Modal {
 			attr: { for: opts.id },
 		});
 
-		const input = field.createEl('input', {
+		const control = field.createDiv({ cls: 'f2-rename-control' });
+		const input = control.createEl('input', {
 			type: 'text',
 			cls: 'f2-rename-input',
 			attr: {
@@ -162,12 +196,20 @@ export class RenamePromptModal extends Modal {
 				this.submit(null);
 			}
 		});
+
+		if (opts.suffix) {
+			control.createSpan({
+				text: opts.suffix,
+				cls: 'f2-rename-ext',
+			});
+		}
+
 		return input;
 	}
 
 	private submitResult(): void {
 		const result: RenamePromptResult = { name: this.value };
-		if (this.options.showAlias) {
+		if (this.options.showAlias || this.options.mode === 'url') {
 			result.alias = this.aliasValue;
 		}
 		this.submit(result);
