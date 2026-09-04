@@ -334,7 +334,7 @@ export class RenamePromptModal extends Modal {
 		const details = parent.createEl('details', {
 			cls: 'f2-rename-more f2-rename-more-full',
 		});
-		details.open = this.options.propertiesOpen !== false;
+		details.open = Boolean(this.options.propertiesOpen);
 		const summary = details.createEl('summary', {
 			cls: 'f2-rename-more-summary',
 		});

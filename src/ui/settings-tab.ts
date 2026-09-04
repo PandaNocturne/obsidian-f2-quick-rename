@@ -156,6 +156,20 @@ export class F2RenameSettingTab extends PluginSettingTab {
 	private renderPropertyFieldsSection(containerEl: HTMLElement): void {
 		new Setting(containerEl).setName('文档属性').setHeading();
 
+		new Setting(containerEl)
+			.setName('默认折叠')
+			.setDesc(
+				'开启后，重命名面板中的属性区域默认折叠。F5 全量属性仍会默认展开。',
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.propertiesDefaultCollapsed)
+					.onChange(async (value) => {
+						this.plugin.settings.propertiesDefaultCollapsed = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
 		containerEl.createEl('p', {
 			text: '配置重命名面板「更多」中可编辑的属性。拖动调整顺序；可将属性拖入「并排容器」使其在同一行显示。列表开启「提示」后会从库中该属性已有值弹出下拉建议。',
 			cls: 'setting-item-description',

@@ -100,6 +100,11 @@ export interface F2RenameSettings {
 	 */
 	autoSaveProperties: boolean;
 	/**
+	 * When true, the properties section in the rename panel starts collapsed.
+	 * F5 full-properties mode still opens expanded.
+	 */
+	propertiesDefaultCollapsed: boolean;
+	/**
 	 * Double-click the extension suffix in the rename panel to edit it.
 	 * Defaults to false.
 	 */
@@ -141,6 +146,7 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	copyNameToClipboard: true,
 	editProperties: true,
 	autoSaveProperties: true,
+	propertiesDefaultCollapsed: true,
 	editExtension: false,
 	propertyFields: DEFAULT_PROPERTY_FIELDS.map((item) =>
 		clonePropertySettingsItem(item),

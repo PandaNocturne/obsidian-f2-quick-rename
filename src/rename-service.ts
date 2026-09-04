@@ -207,6 +207,7 @@ export class RenameService {
 			sourcePath:
 				this.app.workspace.getActiveFile()?.path ?? target?.path ?? '',
 			properties,
+			propertiesOpen: !settings.propertiesDefaultCollapsed,
 			autoSaveProperties,
 			onPropertiesChange:
 				autoSaveProperties && target
@@ -314,7 +315,8 @@ export class RenameService {
 			relatedFile: target,
 			sourcePath: target.path,
 			fullProperties: fullPropertyFields,
-			propertiesOpen: useFullList,
+			propertiesOpen:
+				useFullList || !settings.propertiesDefaultCollapsed,
 			propertiesMergeWrites: mergeWrites,
 			autoSaveProperties,
 			onFullPropertiesChange: autoSaveProperties
