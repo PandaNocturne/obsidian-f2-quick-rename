@@ -372,6 +372,31 @@
 	white-space: nowrap;
 }
 
+.f2-rename-prop-row {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 0.65rem 0.85rem;
+	width: 100%;
+}
+
+.f2-rename-prop-row-cell {
+	flex: 1 1 0;
+	min-width: 8rem;
+}
+
+.f2-rename-prop-row-cell .f2-rename-field,
+.f2-rename-prop-row-cell .f2-rename-list-field {
+	width: 100%;
+}
+
+.f2-rename-prop-row-cell .f2-rename-label {
+	flex: 0 0 auto;
+	min-width: 0;
+	max-width: 40%;
+}
+
 /* Settings: property field rows */
 .f2-rename-setting-property-list {
 	display: flex;
@@ -491,6 +516,81 @@
 	border-radius: var(--radius-s);
 	background: var(--background-modifier-border);
 	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.f2-rename-setting-row-badge {
+	flex: 0 0 auto;
+	padding: 0.1rem 0.4rem;
+	border-radius: var(--radius-s);
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-size: var(--font-ui-smaller);
+}
+
+.f2-rename-setting-property-row.f2-rename-setting-row-container {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0.45rem;
+	background: var(--background-secondary);
+}
+
+.f2-rename-setting-row-header {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	width: 100%;
+}
+
+.f2-rename-setting-row-header .f2-rename-setting-drag-handle {
+	margin-top: 0;
+	align-self: center;
+}
+
+.f2-rename-setting-row-header .f2-rename-setting-remove {
+	margin-top: 0;
+	align-self: center;
+}
+
+.f2-rename-setting-row-header-main {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.55rem 0.75rem;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.f2-rename-setting-row-body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 0.45rem;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	min-height: 2.25rem;
+}
+
+.f2-rename-setting-row-body.is-drop-target {
+	border-color: var(--interactive-accent);
+	background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+}
+
+.f2-rename-setting-row-empty {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	padding: 0.25rem 0.15rem;
+}
+
+.f2-rename-setting-property-row.is-nested {
+	background: var(--background-primary);
+}
+
+.f2-rename-setting-row-add {
+	margin-left: auto;
+	padding: 0.2rem 0.55rem;
 	font-size: var(--font-ui-smaller);
 }
 

@@ -1,6 +1,6 @@
 import type { App, TFile } from 'obsidian';
 import {
-	isPropertyField,
+	flattenPropertyFieldConfigs,
 	type PropertyFieldConfig,
 	type PropertyFieldState,
 	type PropertyFieldType,
@@ -93,7 +93,22 @@ export function normalizePropertyValue(
 export function getPropertyFieldConfigs(
 	items: PropertySettingsItem[],
 ): PropertyFieldConfig[] {
-	return items.filter(isPropertyField);
+	return flattenPropertyFieldConfigs(items);
+}
+
+function toFieldState(
+	frontmatter: Record<string, unknown>,
+	item: PropertyFieldConfig,
+): PropertyFieldState | null {
+	const key = item.key.trim();
+	if (!key) return null;
+	return {
+		key,
+		type: item.type,
+		label: item.label?.trim() || key,
+		showHint: item.showHint === true,
+		value: readPropertyValue(frontmatter[key], item.type),
+	};
 }
 
 export function buildPropertyPanelItems(
@@ -110,18 +125,17 @@ export function buildPropertyPanelItems(
 			result.push({ kind: 'separator', label: item.label });
 			continue;
 		}
-		const key = item.key.trim();
-		if (!key) continue;
-		result.push({
-			kind: 'field',
-			field: {
-				key,
-				type: item.type,
-				label: item.label?.trim() || key,
-				showHint: item.showHint === true,
-				value: readPropertyValue(frontmatter[key], item.type),
-			},
-		});
+		if (item.kind === 'row') {
+			const fields = item.children
+				.map((child) => toFieldState(frontmatter, child))
+				.filter((field): field is PropertyFieldState => field != null);
+			if (fields.length > 0) {
+				result.push({ kind: 'row', fields });
+			}
+			continue;
+		}
+		const field = toFieldState(frontmatter, item);
+		if (field) result.push({ kind: 'field', field });
 	}
 	return result;
 }
@@ -132,12 +146,12 @@ export function buildPropertyStates(
 	file: TFile,
 	configs: PropertySettingsItem[],
 ): PropertyFieldState[] {
-	return buildPropertyPanelItems(app, file, configs)
-		.filter(
-			(item): item is { kind: 'field'; field: PropertyFieldState } =>
-				item.kind === 'field',
-		)
-		.map((item) => item.field);
+	const fields: PropertyFieldState[] = [];
+	for (const item of buildPropertyPanelItems(app, file, configs)) {
+		if (item.kind === 'field') fields.push(item.field);
+		else if (item.kind === 'row') fields.push(...item.fields);
+	}
+	return fields;
 }
 
 export async function writePropertyValues(

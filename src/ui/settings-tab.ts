@@ -3,9 +3,13 @@ import type F2RenamePlugin from '../main';
 import {
 	DEFAULT_PROPERTY_FIELDS,
 	PROPERTY_TYPE_OPTIONS,
+	clonePropertySettingsItem,
+	isPropertyField,
+	isPropertyRow,
 	type F2RenameSettings,
 	type PropertyFieldConfig,
 	type PropertyFieldType,
+	type PropertyRowConfig,
 	type PropertySettingsItem,
 } from '../settings';
 import {
@@ -25,6 +29,11 @@ interface ToggleOption {
 	name: string;
 	desc: string;
 }
+
+/** Drag payload for nested property settings list. */
+type DragPath =
+	| { scope: 'root'; index: number }
+	| { scope: 'row'; rowIndex: number; index: number };
 
 const TOGGLE_OPTIONS: ToggleOption[] = [
 	{
@@ -64,9 +73,11 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 	},
 ];
 
+const DRAG_MIME = 'application/x-f2-rename-property';
+
 export class F2RenameSettingTab extends PluginSettingTab {
 	plugin: F2RenamePlugin;
-	private dragFromIndex: number | null = null;
+	private dragPath: DragPath | null = null;
 
 	constructor(app: App, plugin: F2RenamePlugin) {
 		super(app, plugin);
@@ -76,7 +87,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-		this.dragFromIndex = null;
+		this.dragPath = null;
 
 		new Setting(containerEl).setName('功能开关').setHeading();
 
@@ -106,7 +117,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName('文档属性').setHeading();
 
 		containerEl.createEl('p', {
-			text: '配置重命名面板「更多」中可编辑的属性。拖动左侧手柄调整顺序；可插入分隔符。列表开启「提示」后，输入时会从库中该属性已有值弹出下拉建议。',
+			text: '配置重命名面板「更多」中可编辑的属性。拖动调整顺序；可将属性拖入「并排容器」使其在同一行显示。列表开启「提示」后会从库中该属性已有值弹出下拉建议。',
 			cls: 'setting-item-description',
 		});
 
@@ -117,23 +128,20 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		const items = this.plugin.settings.propertyFields;
 		items.forEach((item, index) => {
 			if (item.kind === 'separator') {
-				this.renderSeparatorRow(listEl, item, index);
+				this.renderSeparatorRow(listEl, item, { scope: 'root', index });
+			} else if (item.kind === 'row') {
+				this.renderRowContainer(listEl, item, index);
 			} else {
-				this.renderFieldRow(listEl, item, index);
+				this.renderFieldRow(listEl, item, { scope: 'root', index });
 			}
 		});
 
 		new Setting(containerEl)
 			.addButton((btn) =>
 				btn.setButtonText('添加属性').onClick(async () => {
-					const next: PropertyFieldConfig = {
-						kind: 'field',
-						key: '',
-						type: 'text',
-						label: '',
-						showHint: false,
-					};
-					this.plugin.settings.propertyFields.push(next);
+					this.plugin.settings.propertyFields.push(
+						this.createEmptyField(),
+					);
 					await this.plugin.saveSettings();
 					this.display();
 				}),
@@ -149,12 +157,21 @@ export class F2RenameSettingTab extends PluginSettingTab {
 				}),
 			)
 			.addButton((btn) =>
+				btn.setButtonText('添加并排容器').onClick(async () => {
+					this.plugin.settings.propertyFields.push({
+						kind: 'row',
+						label: '',
+						children: [],
+					});
+					await this.plugin.saveSettings();
+					this.display();
+				}),
+			)
+			.addButton((btn) =>
 				btn.setButtonText('恢复默认').onClick(async () => {
 					this.plugin.settings.propertyFields =
 						DEFAULT_PROPERTY_FIELDS.map((item) =>
-							item.kind === 'separator'
-								? { ...item }
-								: { ...item },
+							clonePropertySettingsItem(item),
 						);
 					await this.plugin.saveSettings();
 					this.display();
@@ -162,18 +179,33 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			);
 	}
 
+	private createEmptyField(): PropertyFieldConfig {
+		return {
+			kind: 'field',
+			key: '',
+			type: 'text',
+			label: '',
+			showHint: false,
+		};
+	}
+
 	private renderFieldRow(
 		parent: HTMLElement,
 		field: PropertyFieldConfig,
-		index: number,
+		path: DragPath,
+		opts?: { nested?: boolean },
 	): void {
 		const row = parent.createDiv({
-			cls: 'f2-rename-setting-property-row',
+			cls: [
+				'f2-rename-setting-property-row',
+				opts?.nested ? 'is-nested' : '',
+			]
+				.filter(Boolean)
+				.join(' '),
 		});
-		row.dataset.index = String(index);
 
 		const handle = this.createDragHandle(row);
-		this.attachDragHandlers(row, handle, index);
+		this.attachDragHandlers(row, handle, path, 'field');
 
 		const main = row.createDiv({
 			cls: 'f2-rename-setting-property-main',
@@ -276,21 +308,22 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			});
 		}
 
-		this.createDeleteButton(row, index);
+		this.createDeleteButton(row, () => {
+			this.removeAtPath(path);
+		});
 	}
 
 	private renderSeparatorRow(
 		parent: HTMLElement,
 		item: Extract<PropertySettingsItem, { kind: 'separator' }>,
-		index: number,
+		path: DragPath,
 	): void {
 		const row = parent.createDiv({
 			cls: 'f2-rename-setting-property-row f2-rename-setting-separator-row',
 		});
-		row.dataset.index = String(index);
 
 		const handle = this.createDragHandle(row);
-		this.attachDragHandlers(row, handle, index);
+		this.attachDragHandlers(row, handle, path, 'separator');
 
 		const main = row.createDiv({
 			cls: 'f2-rename-setting-property-main',
@@ -314,7 +347,83 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			},
 		).addClass('f2-rename-setting-separator-label');
 
-		this.createDeleteButton(row, index);
+		this.createDeleteButton(row, () => {
+			this.removeAtPath(path);
+		});
+	}
+
+	private renderRowContainer(
+		parent: HTMLElement,
+		item: PropertyRowConfig,
+		rowIndex: number,
+	): void {
+		const path: DragPath = { scope: 'root', index: rowIndex };
+		const row = parent.createDiv({
+			cls: 'f2-rename-setting-property-row f2-rename-setting-row-container',
+		});
+
+		const header = row.createDiv({
+			cls: 'f2-rename-setting-row-header',
+		});
+
+		const handle = this.createDragHandle(header);
+		this.attachDragHandlers(row, handle, path, 'row');
+
+		const headerMain = header.createDiv({
+			cls: 'f2-rename-setting-row-header-main',
+		});
+		headerMain.createSpan({
+			text: '并排容器',
+			cls: 'f2-rename-setting-row-badge',
+		});
+
+		const addBtn = headerMain.createEl('button', {
+			cls: 'mod-cta f2-rename-setting-row-add',
+			text: '添加属性',
+			attr: { type: 'button' },
+		});
+		addBtn.addEventListener('click', () => {
+			item.children.push(this.createEmptyField());
+			void (async () => {
+				await this.plugin.saveSettings();
+				this.display();
+			})();
+		});
+
+		this.createDeleteButton(header, () => {
+			const list = this.plugin.settings.propertyFields;
+			const [removed] = list.splice(rowIndex, 1);
+			if (removed && isPropertyRow(removed) && removed.children.length) {
+				list.splice(
+					rowIndex,
+					0,
+					...removed.children.map((child) => ({ ...child })),
+				);
+			}
+		});
+
+		const body = row.createDiv({
+			cls: 'f2-rename-setting-row-body',
+		});
+		body.dataset.rowIndex = String(rowIndex);
+
+		if (item.children.length === 0) {
+			body.createDiv({
+				cls: 'f2-rename-setting-row-empty',
+				text: '拖入属性到此处，或点击「添加属性」',
+			});
+		}
+
+		item.children.forEach((child, childIndex) => {
+			this.renderFieldRow(
+				body,
+				child,
+				{ scope: 'row', rowIndex, index: childIndex },
+				{ nested: true },
+			);
+		});
+
+		this.attachRowBodyDrop(body, rowIndex);
 	}
 
 	private createDragHandle(row: HTMLElement): HTMLElement {
@@ -329,7 +438,10 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		return handle;
 	}
 
-	private createDeleteButton(row: HTMLElement, index: number): void {
+	private createDeleteButton(
+		row: HTMLElement,
+		onDelete: () => void,
+	): void {
 		const btn = row.createEl('button', {
 			cls: 'clickable-icon f2-rename-setting-remove',
 			attr: {
@@ -339,8 +451,8 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		});
 		setIcon(btn, 'trash-2');
 		btn.addEventListener('click', () => {
+			onDelete();
 			void (async () => {
-				this.plugin.settings.propertyFields.splice(index, 1);
 				await this.plugin.saveSettings();
 				this.display();
 			})();
@@ -374,26 +486,168 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		return input;
 	}
 
+	private removeAtPath(path: DragPath): void {
+		if (path.scope === 'root') {
+			this.plugin.settings.propertyFields.splice(path.index, 1);
+			return;
+		}
+		const row = this.plugin.settings.propertyFields[path.rowIndex];
+		if (!row || !isPropertyRow(row)) return;
+		row.children.splice(path.index, 1);
+	}
+
+	private takeAtPath(path: DragPath): PropertySettingsItem | null {
+		if (path.scope === 'root') {
+			const [item] = this.plugin.settings.propertyFields.splice(
+				path.index,
+				1,
+			);
+			return item ?? null;
+		}
+		const row = this.plugin.settings.propertyFields[path.rowIndex];
+		if (!row || !isPropertyRow(row)) return null;
+		const [child] = row.children.splice(path.index, 1);
+		return child ?? null;
+	}
+
+	private insertAtRoot(index: number, item: PropertySettingsItem): void {
+		const list = this.plugin.settings.propertyFields;
+		const clamped = Math.max(0, Math.min(index, list.length));
+		list.splice(clamped, 0, item);
+	}
+
+	private insertIntoRow(
+		rowIndex: number,
+		childIndex: number,
+		field: PropertyFieldConfig,
+	): void {
+		const row = this.plugin.settings.propertyFields[rowIndex];
+		if (!row || !isPropertyRow(row)) return;
+		const clamped = Math.max(0, Math.min(childIndex, row.children.length));
+		row.children.splice(clamped, 0, field);
+	}
+
+	private samePath(a: DragPath, b: DragPath): boolean {
+		if (a.scope !== b.scope) return false;
+		if (a.scope === 'root' && b.scope === 'root') {
+			return a.index === b.index;
+		}
+		if (a.scope === 'row' && b.scope === 'row') {
+			return a.rowIndex === b.rowIndex && a.index === b.index;
+		}
+		return false;
+	}
+
+	private attachRowBodyDrop(body: HTMLElement, rowIndex: number): void {
+		body.addEventListener('dragover', (event) => {
+			const from = this.dragPath;
+			if (!from) return;
+			if (from.scope === 'root') {
+				const item = this.plugin.settings.propertyFields[from.index];
+				if (!item || !isPropertyField(item)) return;
+			}
+			event.preventDefault();
+			if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+			body.addClass('is-drop-target');
+		});
+
+		body.addEventListener('dragleave', (event) => {
+			const related = event.relatedTarget as Node | null;
+			if (related && body.contains(related)) return;
+			body.removeClass('is-drop-target');
+		});
+
+		body.addEventListener('drop', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			body.removeClass('is-drop-target');
+			const from = this.readDragPath(event) ?? this.dragPath;
+			if (!from) return;
+
+			let insertAt = this.plugin.settings.propertyFields[rowIndex];
+			if (!insertAt || !isPropertyRow(insertAt)) return;
+
+			// Dropping onto empty area → append
+			let childIndex = insertAt.children.length;
+
+			// If dropping onto a nested child, use that child's index
+			const nested = (event.target as HTMLElement | null)?.closest(
+				'.f2-rename-setting-property-row.is-nested',
+			) as HTMLElement | null;
+			if (nested && body.contains(nested)) {
+				const rows = Array.from(
+					body.querySelectorAll(
+						':scope > .f2-rename-setting-property-row.is-nested',
+					),
+				);
+				const idx = rows.indexOf(nested);
+				if (idx >= 0) {
+					const rect = nested.getBoundingClientRect();
+					childIndex =
+						event.clientY < rect.top + rect.height / 2
+							? idx
+							: idx + 1;
+				}
+			}
+
+			if (
+				from.scope === 'row' &&
+				from.rowIndex === rowIndex &&
+				from.index < childIndex
+			) {
+				childIndex -= 1;
+			}
+
+			const moved = this.takeAtPath(from);
+			if (!moved || !isPropertyField(moved)) {
+				if (moved) this.restoreTaken(from, moved);
+				return;
+			}
+
+			// Re-resolve row after possible splice that shifted indices
+			let targetRowIndex = rowIndex;
+			if (from.scope === 'root' && from.index < rowIndex) {
+				targetRowIndex -= 1;
+			}
+			this.insertIntoRow(targetRowIndex, childIndex, moved);
+			void (async () => {
+				await this.plugin.saveSettings();
+				this.display();
+			})();
+		});
+	}
+
+	private restoreTaken(path: DragPath, item: PropertySettingsItem): void {
+		if (path.scope === 'root') {
+			this.insertAtRoot(path.index, item);
+		} else if (isPropertyField(item)) {
+			this.insertIntoRow(path.rowIndex, path.index, item);
+		}
+	}
+
 	private attachDragHandlers(
 		row: HTMLElement,
 		handle: HTMLElement,
-		index: number,
+		path: DragPath,
+		kind: 'field' | 'separator' | 'row',
 	): void {
 		handle.setAttr('draggable', 'true');
 
 		handle.addEventListener('dragstart', (event) => {
-			this.dragFromIndex = index;
+			this.dragPath = path;
 			row.addClass('is-dragging');
-			event.dataTransfer?.setData('text/plain', String(index));
+			event.dataTransfer?.setData(DRAG_MIME, JSON.stringify(path));
+			event.dataTransfer?.setData('text/plain', JSON.stringify(path));
 			if (event.dataTransfer) {
 				event.dataTransfer.effectAllowed = 'move';
 			}
+			row.dataset.dragKind = kind;
 		});
 
 		handle.addEventListener('dragend', () => {
 			row.removeClass('is-dragging');
-			this.dragFromIndex = null;
-			clearDropTargets(row.parentElement);
+			this.dragPath = null;
+			clearDropTargets(this.containerEl);
 		});
 
 		row.addEventListener('dragover', (event) => {
@@ -401,10 +655,18 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			if (event.dataTransfer) {
 				event.dataTransfer.dropEffect = 'move';
 			}
-			if (this.dragFromIndex === null || this.dragFromIndex === index) {
-				return;
+			const from = this.dragPath;
+			if (!from || this.samePath(from, path)) return;
+
+			// Nested field rows: only accept field drops for reorder within / into handled by body
+			if (path.scope === 'row') {
+				if (from.scope === 'root') {
+					const src = this.plugin.settings.propertyFields[from.index];
+					if (!src || !isPropertyField(src)) return;
+				}
 			}
-			clearDropTargets(row.parentElement);
+
+			clearDropTargets(this.containerEl);
 			const rect = row.getBoundingClientRect();
 			const before = event.clientY < rect.top + rect.height / 2;
 			row.addClass(before ? 'drop-before' : 'drop-after');
@@ -418,30 +680,159 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		});
 
 		row.addEventListener('drop', (event) => {
+			const target = event.target as HTMLElement | null;
+			if (
+				path.scope === 'root' &&
+				kind === 'row' &&
+				target?.closest('.f2-rename-setting-row-body')
+			) {
+				return;
+			}
+
 			event.preventDefault();
+			event.stopPropagation();
 			row.removeClass('drop-before');
 			row.removeClass('drop-after');
 
-			const from =
-				this.dragFromIndex ??
-				Number(event.dataTransfer?.getData('text/plain'));
-			if (!Number.isFinite(from) || from === index) return;
+			const from = this.readDragPath(event) ?? this.dragPath;
+			if (!from || this.samePath(from, path)) return;
+
+			// Dropping a field onto a row container (header) puts it inside.
+			if (path.scope === 'root' && kind === 'row') {
+				const src =
+					from.scope === 'root'
+						? this.plugin.settings.propertyFields[from.index]
+						: null;
+				const isField =
+					from.scope === 'row' ||
+					(src != null && isPropertyField(src));
+				if (isField) {
+					const moved = this.takeAtPath(from);
+					if (!moved || !isPropertyField(moved)) {
+						if (moved) this.restoreTaken(from, moved);
+						return;
+					}
+					let rowIndex = path.index;
+					if (from.scope === 'root' && from.index < path.index) {
+						rowIndex -= 1;
+					}
+					const rowItem =
+						this.plugin.settings.propertyFields[rowIndex];
+					const insertAt =
+						rowItem && isPropertyRow(rowItem)
+							? rowItem.children.length
+							: 0;
+					this.insertIntoRow(rowIndex, insertAt, moved);
+					void (async () => {
+						await this.plugin.saveSettings();
+						this.display();
+					})();
+					return;
+				}
+			}
 
 			const rect = row.getBoundingClientRect();
 			const before = event.clientY < rect.top + rect.height / 2;
-			let to = before ? index : index + 1;
-			if (from < to) to -= 1;
-			if (from === to) return;
 
-			const list = this.plugin.settings.propertyFields;
-			const [moved] = list.splice(from, 1);
-			if (!moved) return;
-			list.splice(to, 0, moved);
-			void (async () => {
-				await this.plugin.saveSettings();
-				this.display();
-			})();
+			void this.moveItem(from, path, before);
 		});
+	}
+
+	private readDragPath(event: DragEvent): DragPath | null {
+		const raw =
+			event.dataTransfer?.getData(DRAG_MIME) ||
+			event.dataTransfer?.getData('text/plain');
+		if (!raw) return null;
+		try {
+			return JSON.parse(raw) as DragPath;
+		} catch {
+			return null;
+		}
+	}
+
+	private async moveItem(
+		from: DragPath,
+		to: DragPath,
+		before: boolean,
+	): Promise<void> {
+		// Dropping a field onto a root row container edge → insert beside the container at root
+		// Dropping into row children is handled by attachRowBodyDrop
+
+		if (to.scope === 'row') {
+			// Only fields can live inside rows
+			const peek =
+				from.scope === 'root'
+					? this.plugin.settings.propertyFields[from.index]
+					: null;
+			if (from.scope === 'root' && peek && !isPropertyField(peek)) {
+				return;
+			}
+
+			let insertIndex = before ? to.index : to.index + 1;
+			if (
+				from.scope === 'row' &&
+				from.rowIndex === to.rowIndex &&
+				from.index < insertIndex
+			) {
+				insertIndex -= 1;
+			}
+
+			const moved = this.takeAtPath(from);
+			if (!moved || !isPropertyField(moved)) {
+				if (moved) this.restoreTaken(from, moved);
+				return;
+			}
+
+			let rowIndex = to.rowIndex;
+			if (from.scope === 'root' && from.index < to.rowIndex) {
+				rowIndex -= 1;
+			}
+			this.insertIntoRow(rowIndex, insertIndex, moved);
+			await this.plugin.saveSettings();
+			this.display();
+			return;
+		}
+
+		// Target is root
+		let insertIndex = before ? to.index : to.index + 1;
+
+		// Special: drop field onto row container — if dropping "into" center of row, put inside
+		const targetItem = this.plugin.settings.propertyFields[to.index];
+		if (
+			targetItem &&
+			isPropertyRow(targetItem) &&
+			from.scope === 'root'
+		) {
+			const src = this.plugin.settings.propertyFields[from.index];
+			if (src && isPropertyField(src)) {
+				// Use before/after for sibling placement at root (already computed)
+			}
+		}
+
+		if (from.scope === 'root' && from.index < insertIndex) {
+			insertIndex -= 1;
+		}
+		if (from.scope === 'root' && from.index === to.index) return;
+
+		const moved = this.takeAtPath(from);
+		if (!moved) return;
+
+		if (from.scope === 'row' && !isPropertyField(moved)) {
+			this.restoreTaken(from, moved);
+			return;
+		}
+
+		// Adjust insert index if we removed from a row that sits before target
+		if (from.scope === 'row' && from.rowIndex < to.index) {
+			// root length unchanged for insert position of root items after the row
+		}
+		if (from.scope === 'root' && from.index < to.index) {
+			// already adjusted
+		}
+
+		this.insertAtRoot(insertIndex, moved);
+		await this.plugin.saveSettings();
+		this.display();
 	}
 }
 
@@ -449,10 +840,11 @@ function clearDropTargets(parent: HTMLElement | null): void {
 	if (!parent) return;
 	parent
 		.querySelectorAll(
-			'.f2-rename-setting-property-row.drop-before, .f2-rename-setting-property-row.drop-after',
+			'.f2-rename-setting-property-row.drop-before, .f2-rename-setting-property-row.drop-after, .f2-rename-setting-row-body.is-drop-target',
 		)
 		.forEach((el) => {
 			el.removeClass('drop-before');
 			el.removeClass('drop-after');
+			el.removeClass('is-drop-target');
 		});
 }

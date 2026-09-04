@@ -80,10 +80,17 @@ export class RenamePromptModal extends Modal {
 		this.onSubmit = onSubmit;
 
 		for (const item of options.properties ?? []) {
-			if (item.kind !== 'field') continue;
-			this.propertyValues[item.field.key] = this.cloneValue(
-				item.field.value,
-			);
+			if (item.kind === 'field') {
+				this.propertyValues[item.field.key] = this.cloneValue(
+					item.field.value,
+				);
+			} else if (item.kind === 'row') {
+				for (const field of item.fields) {
+					this.propertyValues[field.key] = this.cloneValue(
+						field.value,
+					);
+				}
+			}
 		}
 	}
 
@@ -221,6 +228,16 @@ export class RenamePromptModal extends Modal {
 		for (const item of properties) {
 			if (item.kind === 'separator') {
 				this.renderPropertySeparator(form, item.label);
+				continue;
+			}
+			if (item.kind === 'row') {
+				const row = form.createDiv({ cls: 'f2-rename-prop-row' });
+				for (const field of item.fields) {
+					const cell = row.createDiv({
+						cls: 'f2-rename-prop-row-cell',
+					});
+					this.renderPropertyField(cell, field);
+				}
 				continue;
 			}
 			this.renderPropertyField(form, item.field);

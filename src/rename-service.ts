@@ -17,7 +17,10 @@ import {
 	buildPropertyPanelItems,
 	writePropertyValues,
 } from './utils/properties';
-import type { PropertyValue } from './settings';
+import {
+	hasConfiguredPropertyFields,
+	type PropertyValue,
+} from './settings';
 
 export class RenameService {
 	constructor(private readonly plugin: F2RenamePlugin) {}
@@ -311,9 +314,7 @@ export class RenameService {
 			file &&
 				settings.editProperties &&
 				file.extension === 'md' &&
-				settings.propertyFields.some(
-					(item) => item.kind !== 'separator' && item.key.trim(),
-				),
+				hasConfiguredPropertyFields(settings.propertyFields),
 		);
 	}
 

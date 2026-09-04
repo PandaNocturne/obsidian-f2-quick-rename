@@ -44,7 +44,18 @@ export interface PropertySeparatorConfig {
 	label?: string;
 }
 
-export type PropertySettingsItem = PropertyFieldConfig | PropertySeparatorConfig;
+/** Side-by-side group: children render on one row in the rename panel. */
+export interface PropertyRowConfig {
+	kind: 'row';
+	/** Optional caption for settings UI */
+	label?: string;
+	children: PropertyFieldConfig[];
+}
+
+export type PropertySettingsItem =
+	| PropertyFieldConfig
+	| PropertySeparatorConfig
+	| PropertyRowConfig;
 
 export type PropertyValue = string | number | boolean | string[] | null;
 
@@ -58,7 +69,8 @@ export interface PropertyFieldState {
 
 export type PropertyPanelItem =
 	| { kind: 'field'; field: PropertyFieldState }
-	| { kind: 'separator'; label?: string };
+	| { kind: 'separator'; label?: string }
+	| { kind: 'row'; fields: PropertyFieldState[] };
 
 export interface F2RenameSettings {
 	/** When the cursor is on a wiki/markdown embed, rename that file. */
@@ -81,7 +93,7 @@ export interface F2RenameSettings {
 	 * (no need to click confirm for attributes).
 	 */
 	autoSaveProperties: boolean;
-	/** Frontmatter keys / separators editable in the rename panel. */
+	/** Frontmatter keys / separators / rows editable in the rename panel. */
 	propertyFields: PropertySettingsItem[];
 }
 
@@ -112,14 +124,51 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	editProperties: true,
 	autoSaveProperties: true,
 	propertyFields: DEFAULT_PROPERTY_FIELDS.map((item) =>
-		item.kind === 'separator' ? { ...item } : { ...item },
+		clonePropertySettingsItem(item),
 	),
 };
 
 export function isPropertyField(
 	item: PropertySettingsItem,
 ): item is PropertyFieldConfig {
-	return item.kind !== 'separator';
+	return item.kind !== 'separator' && item.kind !== 'row';
+}
+
+export function isPropertyRow(
+	item: PropertySettingsItem,
+): item is PropertyRowConfig {
+	return item.kind === 'row';
+}
+
+export function clonePropertySettingsItem(
+	item: PropertySettingsItem,
+): PropertySettingsItem {
+	if (item.kind === 'separator') {
+		return { ...item };
+	}
+	if (item.kind === 'row') {
+		return {
+			kind: 'row',
+			label: item.label,
+			children: item.children.map((child) => ({ ...child })),
+		};
+	}
+	return { ...item };
+}
+
+export function normalizePropertyFieldConfig(
+	raw: PropertyFieldConfig | Record<string, unknown>,
+): PropertyFieldConfig {
+	const record = raw as Record<string, unknown>;
+	return {
+		kind: 'field',
+		key: typeof record.key === 'string' ? record.key : '',
+		type: (typeof record.type === 'string'
+			? record.type
+			: 'text') as PropertyFieldType,
+		label: typeof record.label === 'string' ? record.label : '',
+		showHint: record.showHint === true,
+	};
 }
 
 export function normalizePropertySettingsItem(
@@ -132,13 +181,41 @@ export function normalizePropertySettingsItem(
 			label: typeof record.label === 'string' ? record.label : '',
 		};
 	}
-	return {
-		kind: 'field',
-		key: typeof record.key === 'string' ? record.key : '',
-		type: (typeof record.type === 'string'
-			? record.type
-			: 'text') as PropertyFieldType,
-		label: typeof record.label === 'string' ? record.label : '',
-		showHint: record.showHint === true,
-	};
+	if (record.kind === 'row') {
+		const children = Array.isArray(record.children)
+			? record.children.map((child) =>
+					normalizePropertyFieldConfig(
+						child as PropertyFieldConfig | Record<string, unknown>,
+					),
+				)
+			: [];
+		return {
+			kind: 'row',
+			label: typeof record.label === 'string' ? record.label : '',
+			children,
+		};
+	}
+	return normalizePropertyFieldConfig(record);
+}
+
+/** Flat list of editable field configs (walks row children). */
+export function flattenPropertyFieldConfigs(
+	items: PropertySettingsItem[],
+): PropertyFieldConfig[] {
+	const result: PropertyFieldConfig[] = [];
+	for (const item of items) {
+		if (item.kind === 'separator') continue;
+		if (item.kind === 'row') {
+			result.push(...item.children.filter((child) => child.key.trim()));
+			continue;
+		}
+		if (item.key.trim()) result.push(item);
+	}
+	return result;
+}
+
+export function hasConfiguredPropertyFields(
+	items: PropertySettingsItem[],
+): boolean {
+	return flattenPropertyFieldConfigs(items).length > 0;
 }
