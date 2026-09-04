@@ -1,4 +1,4 @@
-import { App, TFile } from 'obsidian';
+import { App, FileSystemAdapter, TFile } from 'obsidian';
 import { normalizeTagName } from '../ui/tag-suggest';
 import { isWebUrl } from './embed';
 
@@ -151,4 +151,77 @@ export async function openRelatedFile(
 ): Promise<void> {
 	if (!file) return;
 	await app.workspace.getLeaf(true).openFile(file);
+}
+
+type AppWithShowInFolder = App & {
+	showInFolder?: (path: string) => void;
+};
+
+type ElectronWithShell = {
+	shell?: { showItemInFolder?: (fullPath: string) => void };
+};
+
+/**
+ * Reveal the file in the system file manager.
+ * Prefer Obsidian desktop `app.showInFolder(filePath)` (must keep `this`).
+ */
+export function revealFileInSystemFolder(
+	app: App,
+	file: TFile | null | undefined,
+): boolean {
+	if (!file) return false;
+
+	const desktopApp = app as AppWithShowInFolder;
+	if (typeof desktopApp.showInFolder === 'function') {
+		// Call as a method so `this` stays bound to App.
+		desktopApp.showInFolder(file.path);
+		return true;
+	}
+
+	const adapter = app.vault.adapter;
+	if (!(adapter instanceof FileSystemAdapter)) return false;
+
+	const fullPath = adapter.getFullPath(file.path);
+	const nodeRequire = (
+		window as Window & {
+			require?: (id: string) => ElectronWithShell;
+		}
+	).require;
+	if (typeof nodeRequire !== 'function') return false;
+
+	try {
+		const electron = nodeRequire('electron');
+		const showItem = electron?.shell?.showItemInFolder;
+		if (typeof showItem === 'function') {
+			showItem(fullPath);
+			return true;
+		}
+	} catch {
+		// Mobile / restricted environments.
+	}
+
+	return false;
+}
+
+/**
+ * Shortest vault wikilink for a file, e.g. `[[Note]]` or `[[folder/Note]]`.
+ */
+export function fileToWikilink(
+	app: App,
+	file: TFile,
+	sourcePath = '',
+): string {
+	const linktext = app.metadataCache.fileToLinktext(file, sourcePath, true);
+	return `[[${linktext}]]`;
+}
+
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+	const value = text.trim();
+	if (!value) return false;
+	try {
+		await navigator.clipboard.writeText(value);
+		return true;
+	} catch {
+		return false;
+	}
 }

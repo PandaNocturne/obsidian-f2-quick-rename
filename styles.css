@@ -47,10 +47,37 @@
 
 .f2-rename-title {
 	margin: 0;
+	flex: 1 1 auto;
+	min-width: 0;
 	font-size: var(--font-ui-large);
 	font-weight: var(--font-semibold);
 	line-height: 1.3;
 	color: var(--text-normal);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.f2-rename-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.15rem;
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.f2-rename-header-action {
+	color: var(--text-muted);
+}
+
+.f2-rename-header-action:hover:not(:disabled) {
+	color: var(--text-normal);
+}
+
+.f2-rename-header-action.is-disabled,
+.f2-rename-header-action:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
 }
 
 .f2-rename-body {
@@ -83,7 +110,7 @@
 }
 
 .f2-rename-label {
-	flex: 0 0 4rem;
+	/* flex: 0 0 4rem; */
 	margin: 0;
 	font-size: var(--font-ui-small);
 	font-weight: var(--font-medium);

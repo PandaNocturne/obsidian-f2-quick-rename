@@ -50,6 +50,14 @@ export const zhCN: Record<TranslationKey, string> = {
 	'tooltip.openFile': '打开文件',
 	'aria.openLabeled': '打开{label}',
 
+	'header.openFolder': '在文件夹中显示',
+	'header.copyWiki': '复制 wiki',
+	'notice.folderRevealUnavailable': '仅桌面端可在文件夹中显示',
+	'notice.copiedWiki': '已复制 wiki 链接',
+	'notice.copiedText': '已复制',
+	'notice.copyFailed': '复制失败',
+	'notice.noRelatedFile': '没有关联文件',
+
 	'propertyType.checkbox': '复选框',
 	'propertyType.date': '日期',
 	'propertyType.datetime': '日期 & 时间',

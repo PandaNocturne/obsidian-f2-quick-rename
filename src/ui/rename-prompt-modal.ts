@@ -8,8 +8,11 @@ import type {
 import { PROPERTY_TYPE_OPTIONS } from '../settings';
 import {
 	classifyValue,
+	copyTextToClipboard,
+	fileToWikilink,
 	openClassifiedValue,
 	openRelatedFile,
+	revealFileInSystemFolder,
 	type ClassifiedValue,
 } from '../utils/value-links';
 import {
@@ -163,6 +166,7 @@ export class RenamePromptModal extends Modal {
 			text: this.titleText,
 			cls: 'f2-rename-title',
 		});
+		this.renderHeaderActions(header);
 
 		const body = contentEl.createDiv({ cls: 'f2-rename-body' });
 		const form = body.createDiv({ cls: 'f2-rename-form' });
@@ -331,6 +335,112 @@ export class RenamePromptModal extends Modal {
 			this.resolved = true;
 			this.onSubmit(null);
 		}
+	}
+
+	private renderHeaderActions(header: HTMLElement): void {
+		const actions = header.createDiv({ cls: 'f2-rename-header-actions' });
+		const isUrl = this.options.mode === 'url';
+		const file = this.options.relatedFile ?? null;
+
+		if (isUrl) {
+			this.createHeaderActionButton(actions, {
+				icon: 'external-link',
+				label: t('tooltip.openLink'),
+				onClick: () => {
+					const url = this.value.trim();
+					if (!url) {
+						new Notice(t('notice.urlEmpty'));
+						return;
+					}
+					void openClassifiedValue(
+						this.app,
+						classifyValue(this.app, url),
+						this.options.sourcePath ?? '',
+					);
+				},
+			});
+			this.createHeaderActionButton(actions, {
+				icon: 'copy',
+				label: t('header.copyWiki'),
+				onClick: () => {
+					void this.copyHeaderText(
+						this.value.trim(),
+						t('notice.copiedText'),
+					);
+				},
+			});
+			return;
+		}
+
+		this.createHeaderActionButton(actions, {
+			icon: 'folder-open',
+			label: t('header.openFolder'),
+			disabled: !file,
+			onClick: () => {
+				if (!file) {
+					new Notice(t('notice.noRelatedFile'));
+					return;
+				}
+				if (!revealFileInSystemFolder(this.app, file)) {
+					new Notice(t('notice.folderRevealUnavailable'));
+				}
+			},
+		});
+
+		this.createHeaderActionButton(actions, {
+			icon: 'copy',
+			label: t('header.copyWiki'),
+			disabled: !file,
+			onClick: () => {
+				if (!file) {
+					new Notice(t('notice.noRelatedFile'));
+					return;
+				}
+				const wiki = fileToWikilink(
+					this.app,
+					file,
+					this.options.sourcePath ?? file.path,
+				);
+				void this.copyHeaderText(wiki, t('notice.copiedWiki'));
+			},
+		});
+	}
+
+	private createHeaderActionButton(
+		parent: HTMLElement,
+		opts: {
+			icon: string;
+			label: string;
+			disabled?: boolean;
+			onClick: () => void;
+		},
+	): void {
+		const btn = parent.createEl('button', {
+			cls: 'clickable-icon f2-rename-header-action',
+			attr: {
+				type: 'button',
+				title: opts.label,
+				'aria-label': opts.label,
+			},
+		});
+		if (opts.disabled) {
+			btn.disabled = true;
+			btn.addClass('is-disabled');
+		}
+		setIcon(btn, opts.icon);
+		btn.addEventListener('click', (evt) => {
+			evt.preventDefault();
+			if (btn.disabled) return;
+			opts.onClick();
+		});
+	}
+
+	private async copyHeaderText(
+		text: string,
+		successNotice = t('notice.copiedWiki'),
+	): Promise<void> {
+		const ok = await copyTextToClipboard(text);
+		new Notice(ok ? successNotice : t('notice.copyFailed'));
 	}
 
 	private renderFullPropertiesSection(

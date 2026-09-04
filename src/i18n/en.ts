@@ -55,6 +55,15 @@ export const en = {
 	'tooltip.openFile': 'Open file',
 	'aria.openLabeled': 'Open {label}',
 
+	'header.openFolder': 'Show in folder',
+	'header.copyWiki': 'Copy wikilink',
+	'notice.folderRevealUnavailable':
+		'Show in folder is only available on desktop',
+	'notice.copiedWiki': 'Copied wikilink',
+	'notice.copiedText': 'Copied',
+	'notice.copyFailed': 'Copy failed',
+	'notice.noRelatedFile': 'No related file',
+
 	'propertyType.checkbox': 'Checkbox',
 	'propertyType.date': 'Date',
 	'propertyType.datetime': 'Date & time',
