@@ -70,15 +70,28 @@ export class FullPropertiesPanel {
 
 		this.listEl = parent.createDiv({ cls: 'f2-full-props-list' });
 		this.renderList();
+	}
 
-		const addBtn = parent.createEl('button', {
-			cls: 'f2-full-props-add',
-			attr: { type: 'button' },
+	/** Add a new empty property row and focus its key field. */
+	addProperty(): void {
+		const key = this.nextEmptyKey();
+		this.fields.push({
+			key,
+			type: 'text',
+			label: key,
+			showHint: false,
+			multiline: false,
+			value: '',
 		});
-		const addIcon = addBtn.createSpan({ cls: 'f2-full-props-add-icon' });
-		setIcon(addIcon, 'plus');
-		addBtn.createSpan({ text: '添加属性' });
-		addBtn.addEventListener('click', () => this.addProperty());
+		this.values[key] = '';
+		this.renderList();
+		const keyInputs = this.listEl?.querySelectorAll('.f2-full-props-key');
+		const last = keyInputs?.[keyInputs.length - 1] as
+			| HTMLInputElement
+			| undefined;
+		last?.focus();
+		last?.select();
+		// Empty key row is ephemeral until named; don't wipe frontmatter yet.
 	}
 
 	destroy(): void {
@@ -623,27 +636,6 @@ export class FullPropertiesPanel {
 		}
 		const rect = anchor.getBoundingClientRect();
 		menu.showAtPosition({ x: rect.left, y: rect.bottom + 4 });
-	}
-
-	private addProperty(): void {
-		const key = this.nextEmptyKey();
-		this.fields.push({
-			key,
-			type: 'text',
-			label: key,
-			showHint: false,
-			multiline: false,
-			value: '',
-		});
-		this.values[key] = '';
-		this.renderList();
-		const keyInputs = this.listEl?.querySelectorAll('.f2-full-props-key');
-		const last = keyInputs?.[keyInputs.length - 1] as
-			| HTMLInputElement
-			| undefined;
-		last?.focus();
-		last?.select();
-		// Empty key row is ephemeral until named; don't wipe frontmatter yet.
 	}
 
 	private nextEmptyKey(): string {

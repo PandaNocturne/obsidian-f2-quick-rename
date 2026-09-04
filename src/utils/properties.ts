@@ -310,6 +310,40 @@ export function estimateMultilineRows(text: string, cols = 36): number {
 }
 
 /**
+ * Build editable states for configured property fields only (F2 panel).
+ * Session-added properties are not included on the next open.
+ */
+export function buildConfiguredPropertyStates(
+	app: App,
+	file: TFile,
+	items: PropertySettingsItem[],
+): PropertyFieldState[] {
+	const frontmatter: Record<string, unknown> = {
+		...(app.metadataCache.getFileCache(file)?.frontmatter ?? {}),
+	};
+	delete (frontmatter as { position?: unknown }).position;
+
+	const fields: PropertyFieldState[] = [];
+	for (const cfg of getPropertyFieldConfigs(items)) {
+		const key = cfg.key.trim();
+		if (!key) continue;
+		const raw = readFrontmatterValue(frontmatter, key);
+		const value = readPropertyValue(raw, cfg.type);
+		fields.push({
+			key,
+			type: cfg.type,
+			label: cfg.label?.trim() || key,
+			showHint: cfg.showHint === true,
+			multiline:
+				cfg.type === 'text' &&
+				(cfg.multiline === true || isMultilineTextValue(value)),
+			value,
+		});
+	}
+	return fields;
+}
+
+/**
  * Build editable states for every frontmatter key on the note
  * (Obsidian-style full properties panel).
  */
@@ -341,6 +375,7 @@ export function buildFullPropertyStates(
 
 /**
  * Rewrite note frontmatter from an ordered field list (supports add / delete / reorder).
+ * Replaces the entire frontmatter block (F5).
  */
 export async function writeFullFrontmatter(
 	app: App,
@@ -360,7 +395,55 @@ export async function writeFullFrontmatter(
 				const raw =
 					values[key] !== undefined ? values[key] : field.value;
 				const next = normalizePropertyValue(raw, field.type);
-				if (next !== undefined) {
+				if (next === undefined) {
+					delete frontmatter[key];
+				} else {
+					frontmatter[key] = next;
+				}
+			}
+		},
+	);
+}
+
+/**
+ * Merge panel fields into frontmatter without wiping unrelated keys (F2).
+ * `managedKeys` are keys this session owns (configured + previously added);
+ * removed managed keys are deleted, other frontmatter keys are left alone.
+ */
+export async function writeMergedFrontmatter(
+	app: App,
+	file: TFile,
+	fields: PropertyFieldState[],
+	values: Record<string, PropertyValue>,
+	managedKeys: string[],
+): Promise<void> {
+	const panelKeys = fields
+		.map((field) => field.key.trim())
+		.filter((key) => key.length > 0);
+	const panelKeySet = new Set(panelKeys);
+	const managed = new Set(
+		[...managedKeys, ...panelKeys]
+			.map((key) => key.trim())
+			.filter((key) => key.length > 0),
+	);
+
+	await app.fileManager.processFrontMatter(
+		file,
+		(frontmatter: Record<string, unknown>) => {
+			for (const key of managed) {
+				if (!panelKeySet.has(key)) {
+					delete frontmatter[key];
+				}
+			}
+			for (const field of fields) {
+				const key = field.key.trim();
+				if (!key) continue;
+				const raw =
+					values[key] !== undefined ? values[key] : field.value;
+				const next = normalizePropertyValue(raw, field.type);
+				if (next === undefined) {
+					delete frontmatter[key];
+				} else {
 					frontmatter[key] = next;
 				}
 			}
