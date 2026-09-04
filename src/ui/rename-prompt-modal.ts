@@ -1,10 +1,16 @@
-import { App, Modal, Notice, setIcon } from 'obsidian';
+import { App, Modal, Notice, TFile, setIcon } from 'obsidian';
 import type {
 	PropertyFieldState,
 	PropertyPanelItem,
 	PropertyValue,
 } from '../settings';
 import { PROPERTY_TYPE_OPTIONS } from '../settings';
+import {
+	classifyValue,
+	openClassifiedValue,
+	openRelatedFile,
+	type ClassifiedValue,
+} from '../utils/value-links';
 import {
 	ListValueSuggest,
 	TagInputSuggest,
@@ -37,6 +43,10 @@ export interface RenamePromptOptions {
 	 * Include the leading dot. Ignored in `url` mode.
 	 */
 	extension?: string;
+	/** Source path used to resolve wiki / note links in list chips. */
+	sourcePath?: string;
+	/** Related vault file for “关联文档” (click label icon to open). */
+	relatedFile?: TFile | null;
 	/** Document properties / separators shown under the collapsible “更多” section. */
 	properties?: PropertyPanelItem[];
 	/** Persist property edits immediately (default driven by settings). */
@@ -115,23 +125,62 @@ export class RenamePromptModal extends Modal {
 
 		const isUrl = this.options.mode === 'url';
 		const showAlias = this.options.showAlias ?? isUrl;
+		const relatedFile = this.options.relatedFile ?? null;
+		const isRelatedDoc = Boolean(relatedFile) && !isUrl;
 
 		const nameField = {
 			id: 'f2-rename-input',
-			label: this.options.nameLabel ?? (isUrl ? 'URL' : '文件名'),
+			label:
+				this.options.nameLabel ??
+				(isUrl ? '链接' : isRelatedDoc ? '关联文档' : '文件名'),
 			value: this.defaultValue,
 			suffix: isUrl ? undefined : this.options.extension,
 			placeholder: isUrl ? 'https://…' : undefined,
+			icon: isUrl ? 'link' : 'file-text',
+			onIconClick: isUrl
+				? () => {
+						const url = this.value.trim();
+						if (!url) {
+							new Notice('URL 为空');
+							return;
+						}
+						void openClassifiedValue(
+							this.app,
+							classifyValue(this.app, url),
+							this.options.sourcePath ?? '',
+						);
+					}
+				: relatedFile
+					? () => {
+							void openRelatedFile(this.app, relatedFile);
+						}
+					: undefined,
 		};
 
 		const aliasField = showAlias
 			? {
 					id: 'f2-rename-alias-input',
-					label: this.options.aliasLabel ?? (isUrl ? '标题' : '别名'),
+					label:
+						this.options.aliasLabel ?? (isUrl ? '标题' : '别名'),
 					value: this.aliasValue,
 					placeholder: isUrl
 						? '链接显示标题'
 						: '可选，对应 | 后的显示名',
+					icon: isUrl ? 'heading' : 'quote',
+					onIconClick: isUrl
+						? () => {
+								const url = this.value.trim();
+								if (!url) {
+									new Notice('URL 为空');
+									return;
+								}
+								void openClassifiedValue(
+									this.app,
+									classifyValue(this.app, url),
+									this.options.sourcePath ?? '',
+								);
+							}
+						: undefined,
 				}
 			: null;
 
@@ -456,20 +505,76 @@ export class RenamePromptModal extends Modal {
 
 		const renderChips = (): void => {
 			chips.empty();
+			const sourcePath =
+				this.options.sourcePath ??
+				this.options.relatedFile?.path ??
+				'';
 			for (const [index, item] of getList().entries()) {
+				const classified = classifyValue(this.app, item, {
+					forceTag: useTagSuggest,
+					sourcePath,
+				});
 				const chip = chips.createSpan({
-					cls: 'f2-rename-chip',
+					cls: [
+						'f2-rename-chip',
+						classified.kind !== 'text'
+							? `is-${classified.kind}`
+							: '',
+					]
+						.filter(Boolean)
+						.join(' '),
 					attr: {
-						title: '双击编辑',
+						title:
+							classified.kind === 'text'
+								? '双击编辑'
+								: '点击图标打开，双击编辑',
 						...(isTags ? { 'data-property-type': 'tags' } : {}),
+						'data-value-kind': classified.kind,
 					},
 				});
+
+				const prefix = chip.createSpan({
+					cls:
+						classified.kind === 'text'
+							? 'f2-rename-chip-prefix'
+							: 'f2-rename-chip-prefix is-action',
+					attr:
+						classified.kind === 'text'
+							? undefined
+							: {
+									role: 'button',
+									tabindex: '0',
+									title: chipActionTitle(classified),
+									'aria-label': chipActionTitle(classified),
+								},
+				});
+				setIcon(prefix, classified.icon);
+				if (classified.kind !== 'text') {
+					const openValue = (evt: Event): void => {
+						evt.preventDefault();
+						evt.stopPropagation();
+						void openClassifiedValue(
+							this.app,
+							classified,
+							sourcePath,
+						);
+					};
+					prefix.addEventListener('click', openValue);
+					prefix.addEventListener('keydown', (evt: KeyboardEvent) => {
+						if (evt.key === 'Enter' || evt.key === ' ') {
+							openValue(evt);
+						}
+					});
+					prefix.addEventListener('dblclick', (evt) => {
+						evt.preventDefault();
+						evt.stopPropagation();
+					});
+				}
+
 				const textEl = chip.createSpan({
 					cls: 'f2-rename-chip-text',
 				});
-				textEl.setText(
-					useTagSuggest ? `#${normalizeTagName(item)}` : item,
-				);
+				textEl.setText(classified.display);
 
 				const beginEdit = (): void => {
 					if (chip.hasClass('is-editing')) return;
@@ -480,9 +585,8 @@ export class RenamePromptModal extends Modal {
 					textEl.setAttr('contenteditable', 'true');
 					textEl.setAttr('spellcheck', 'false');
 					textEl.setAttr('role', 'textbox');
-					textEl.setText(
-						useTagSuggest ? `#${normalizeTagName(item)}` : item,
-					);
+					textEl.setText(classified.display);
+					prefix.hide();
 
 					let closed = false;
 					const finish = (action: () => void): void => {
@@ -672,15 +776,46 @@ export class RenamePromptModal extends Modal {
 			value: string;
 			placeholder?: string;
 			suffix?: string;
+			icon?: string;
+			onIconClick?: () => void;
 		},
 		onInput: (value: string) => void,
 	): HTMLInputElement {
 		const field = parent.createDiv({ cls: 'f2-rename-field' });
-		field.createEl('label', {
-			text: opts.label,
-			cls: 'f2-rename-label',
+		const label = field.createEl('label', {
+			cls: 'f2-rename-label f2-rename-prop-label',
 			attr: { for: opts.id },
 		});
+		if (opts.icon) {
+			const iconEl = label.createSpan({
+				cls: opts.onIconClick
+					? 'f2-rename-prop-icon f2-rename-label-action'
+					: 'f2-rename-prop-icon',
+				attr: opts.onIconClick
+					? {
+							role: 'button',
+							tabindex: '0',
+							title: '点击打开',
+							'aria-label': `打开${opts.label}`,
+						}
+					: undefined,
+			});
+			setIcon(iconEl, opts.icon);
+			if (opts.onIconClick) {
+				const activate = (evt: Event): void => {
+					evt.preventDefault();
+					evt.stopPropagation();
+					opts.onIconClick?.();
+				};
+				iconEl.addEventListener('click', activate);
+				iconEl.addEventListener('keydown', (evt: KeyboardEvent) => {
+					if (evt.key === 'Enter' || evt.key === ' ') {
+						activate(evt);
+					}
+				});
+			}
+		}
+		label.createSpan({ text: opts.label });
 
 		const control = field.createDiv({ cls: 'f2-rename-control' });
 		const input = control.createEl('input', {
@@ -792,4 +927,17 @@ export function promptRename(
 			options,
 		).open();
 	});
+}
+
+function chipActionTitle(value: ClassifiedValue): string {
+	switch (value.kind) {
+		case 'tag':
+			return '打开标签搜索';
+		case 'url':
+			return '打开链接';
+		case 'document':
+			return '打开关联文档';
+		default:
+			return '';
+	}
 }
