@@ -60,6 +60,11 @@ export interface F2RenameSettings {
 	copyNameToClipboard: boolean;
 	/** Show configured frontmatter fields under “更多” when renaming a note. */
 	editProperties: boolean;
+	/**
+	 * Persist property edits immediately while the rename panel is open
+	 * (no need to click confirm for attributes).
+	 */
+	autoSaveProperties: boolean;
 	/** Frontmatter keys editable in the rename panel. */
 	propertyFields: PropertyFieldConfig[];
 }
@@ -87,5 +92,6 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	renameCompanions: true,
 	copyNameToClipboard: true,
 	editProperties: true,
+	autoSaveProperties: true,
 	propertyFields: DEFAULT_PROPERTY_FIELDS.map((f) => ({ ...f })),
 };

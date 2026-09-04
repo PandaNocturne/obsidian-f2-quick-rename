@@ -160,6 +160,9 @@ export class RenameService {
 				? buildPropertyStates(this.app, target, settings.propertyFields)
 				: undefined;
 
+		const autoSaveProperties =
+			canEditProperties && settings.autoSaveProperties;
+
 		const result = await promptRename(this.app, kindLabel, displayBase, {
 			mode: 'file',
 			showAlias,
@@ -170,6 +173,11 @@ export class RenameService {
 				embed.linkpath,
 			),
 			properties,
+			autoSaveProperties,
+			onPropertiesChange:
+				autoSaveProperties && target
+					? (values) => this.applyProperties(target, values)
+					: undefined,
 		});
 		if (result === null) return;
 
@@ -214,7 +222,11 @@ export class RenameService {
 
 		const nameChanged = newPath !== target.path;
 
-		if (result.properties && canEditProperties) {
+		if (
+			result.properties &&
+			canEditProperties &&
+			!settings.autoSaveProperties
+		) {
 			await this.applyProperties(target, result.properties);
 		}
 
@@ -237,11 +249,17 @@ export class RenameService {
 		const properties = canEditProperties
 			? buildPropertyStates(this.app, target, settings.propertyFields)
 			: undefined;
+		const autoSaveProperties =
+			canEditProperties && settings.autoSaveProperties;
 
 		const kindLabel = this.describeFileKind(target, isEmbed, excalidraw);
 		const result = await promptRename(this.app, kindLabel, displayBase, {
 			extension: displayExtensionSuffix(target, excalidraw),
 			properties,
+			autoSaveProperties,
+			onPropertiesChange: autoSaveProperties
+				? (values) => this.applyProperties(target, values)
+				: undefined,
 		});
 		if (result === null) return;
 
@@ -261,7 +279,11 @@ export class RenameService {
 
 		const nameChanged = newPath !== target.path;
 
-		if (result.properties && canEditProperties) {
+		if (
+			result.properties &&
+			canEditProperties &&
+			!settings.autoSaveProperties
+		) {
 			await this.applyProperties(target, result.properties);
 		}
 

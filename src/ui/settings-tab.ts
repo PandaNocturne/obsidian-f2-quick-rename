@@ -51,6 +51,11 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 		name: '编辑文档属性',
 		desc: '重命名当前笔记或可识别的嵌入 Markdown 文档时，在「更多」中编辑配置的 frontmatter 属性。',
 	},
+	{
+		key: 'autoSaveProperties',
+		name: '属性编辑自动保存',
+		desc: '在「更多」中修改属性后立即写入笔记，无需点击确认。关闭后需点击「重命名」才会保存属性。',
+	},
 ];
 
 export class F2RenameSettingTab extends PluginSettingTab {

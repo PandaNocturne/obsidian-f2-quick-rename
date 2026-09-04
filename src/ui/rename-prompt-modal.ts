@@ -37,6 +37,12 @@ export interface RenamePromptOptions {
 	extension?: string;
 	/** Document properties shown under the collapsible “更多” section. */
 	properties?: PropertyFieldState[];
+	/** Persist property edits immediately (default driven by settings). */
+	autoSaveProperties?: boolean;
+	/** Called when properties change and auto-save is enabled. */
+	onPropertiesChange?: (
+		values: Record<string, PropertyValue>,
+	) => void | Promise<void>;
 }
 
 /**
@@ -54,6 +60,7 @@ export class RenamePromptModal extends Modal {
 	private resolved = false;
 	private inputEl: HTMLInputElement | null = null;
 	private aliasInputEl: HTMLInputElement | null = null;
+	private propertySaveTimer: number | null = null;
 
 	constructor(
 		app: App,
@@ -171,6 +178,12 @@ export class RenamePromptModal extends Modal {
 	}
 
 	onClose(): void {
+		if (this.options.autoSaveProperties) {
+			void this.persistProperties(true);
+		} else if (this.propertySaveTimer !== null) {
+			window.clearTimeout(this.propertySaveTimer);
+			this.propertySaveTimer = null;
+		}
 		const { contentEl } = this;
 		contentEl.empty();
 		this.inputEl = null;
@@ -266,6 +279,7 @@ export class RenamePromptModal extends Modal {
 		input.checked = Boolean(this.propertyValues[field.key]);
 		input.addEventListener('change', () => {
 			this.propertyValues[field.key] = input.checked;
+			void this.persistProperties(true);
 		});
 	}
 
@@ -291,6 +305,10 @@ export class RenamePromptModal extends Modal {
 			const raw = input.value.trim();
 			this.propertyValues[field.key] =
 				raw === '' ? null : Number(raw);
+			this.schedulePersistProperties();
+		});
+		input.addEventListener('change', () => {
+			void this.persistProperties(true);
 		});
 		this.bindEscape(input);
 	}
@@ -322,6 +340,10 @@ export class RenamePromptModal extends Modal {
 		input.value = display;
 		input.addEventListener('input', () => {
 			this.propertyValues[field.key] = input.value;
+			this.schedulePersistProperties();
+		});
+		input.addEventListener('change', () => {
+			void this.persistProperties(true);
 		});
 		this.bindEscape(input);
 	}
@@ -384,6 +406,7 @@ export class RenamePromptModal extends Modal {
 		const setList = (next: string[]): void => {
 			this.propertyValues[field.key] = next;
 			renderChips();
+			void this.persistProperties(true);
 		};
 
 		const renderChips = (): void => {
@@ -649,6 +672,30 @@ export class RenamePromptModal extends Modal {
 		return value;
 	}
 
+	private schedulePersistProperties(): void {
+		if (!this.options.autoSaveProperties || !this.options.onPropertiesChange) {
+			return;
+		}
+		if (this.propertySaveTimer !== null) {
+			window.clearTimeout(this.propertySaveTimer);
+		}
+		this.propertySaveTimer = window.setTimeout(() => {
+			this.propertySaveTimer = null;
+			void this.persistProperties(false);
+		}, 320);
+	}
+
+	private async persistProperties(flushTimer: boolean): Promise<void> {
+		if (!this.options.autoSaveProperties || !this.options.onPropertiesChange) {
+			return;
+		}
+		if (flushTimer && this.propertySaveTimer !== null) {
+			window.clearTimeout(this.propertySaveTimer);
+			this.propertySaveTimer = null;
+		}
+		await this.options.onPropertiesChange({ ...this.propertyValues });
+	}
+
 	private submitResult(): void {
 		const result: RenamePromptResult = { name: this.value };
 		if (this.options.showAlias || this.options.mode === 'url') {
@@ -656,6 +703,10 @@ export class RenamePromptModal extends Modal {
 		}
 		if ((this.options.properties?.length ?? 0) > 0) {
 			result.properties = { ...this.propertyValues };
+			// Flush any pending debounced auto-save before closing.
+			if (this.options.autoSaveProperties) {
+				void this.persistProperties(true);
+			}
 		}
 		this.submit(result);
 	}
