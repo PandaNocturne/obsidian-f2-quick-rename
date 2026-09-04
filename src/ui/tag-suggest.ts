@@ -103,5 +103,33 @@ export class TagInputSuggest extends AbstractInputSuggest<string> {
 
 /** Whether this property should use live tag suggestions. */
 export function shouldSuggestTags(key: string): boolean {
-	return key.trim().toLowerCase() === 'tags';
+	return resolvePropertyTypeAttr(key, 'list') === 'tags';
+}
+
+/**
+ * Obsidian-aligned `data-property-type` value for a frontmatter field.
+ * Special-cases `tags` / `aliases`; otherwise maps our editor types.
+ */
+export function resolvePropertyTypeAttr(
+	key: string,
+	type: 'checkbox' | 'date' | 'datetime' | 'list' | 'number' | 'text',
+): string {
+	const normalized = key.trim().toLowerCase();
+	if (normalized === 'tags') return 'tags';
+	if (normalized === 'aliases') return 'aliases';
+	switch (type) {
+		case 'checkbox':
+			return 'checkbox';
+		case 'date':
+			return 'date';
+		case 'datetime':
+			return 'datetime';
+		case 'number':
+			return 'number';
+		case 'list':
+			return 'multitext';
+		case 'text':
+		default:
+			return 'text';
+	}
 }

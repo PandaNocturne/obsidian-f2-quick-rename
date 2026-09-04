@@ -7,6 +7,7 @@ import { PROPERTY_TYPE_OPTIONS } from '../settings';
 import {
 	TagInputSuggest,
 	normalizeTagName,
+	resolvePropertyTypeAttr,
 	shouldSuggestTags,
 } from './tag-suggest';
 
@@ -330,7 +331,16 @@ export class RenamePromptModal extends Modal {
 		field: PropertyFieldState,
 		icon?: string,
 	): void {
-		const wrap = parent.createDiv({ cls: 'f2-rename-list-field' });
+		const propertyType = resolvePropertyTypeAttr(field.key, field.type);
+		const isTags = propertyType === 'tags';
+
+		const wrap = parent.createDiv({
+			cls: 'f2-rename-list-field',
+			attr: {
+				'data-property-type': propertyType,
+				'data-property-key': field.key,
+			},
+		});
 
 		const head = wrap.createDiv({ cls: 'f2-rename-field f2-rename-list-head' });
 		const label = head.createEl('label', {
@@ -338,7 +348,7 @@ export class RenamePromptModal extends Modal {
 			attr: { for: `f2-prop-${field.key}` },
 		});
 		const typeMeta = PROPERTY_TYPE_OPTIONS.find((o) => o.type === field.type);
-		const iconName = icon ?? typeMeta?.icon;
+		const iconName = isTags ? 'lucide-tags' : (icon ?? typeMeta?.icon);
 		if (iconName) {
 			const iconEl = label.createSpan({ cls: 'f2-rename-prop-icon' });
 			setIcon(iconEl, iconName);
@@ -353,13 +363,17 @@ export class RenamePromptModal extends Modal {
 				id: `f2-prop-${field.key}`,
 				spellcheck: 'false',
 				autocomplete: 'off',
-				placeholder: field.hint || '添加…',
+				placeholder: field.hint || (isTags ? '添加标签' : '添加…'),
+				...(isTags ? { 'data-property-type': 'tags' } : {}),
 			},
 		});
 
-		const chips = wrap.createDiv({ cls: 'f2-rename-list-chips' });
+		const chips = wrap.createDiv({
+			cls: 'f2-rename-list-chips',
+			attr: isTags ? { 'data-property-type': 'tags' } : undefined,
+		});
 
-		const useTagSuggest = shouldSuggestTags(field.key);
+		const useTagSuggest = isTags || shouldSuggestTags(field.key);
 		let suggestPicked = false;
 
 		const getList = (): string[] => {
@@ -377,7 +391,10 @@ export class RenamePromptModal extends Modal {
 			for (const [index, item] of getList().entries()) {
 				const chip = chips.createSpan({
 					cls: 'f2-rename-chip',
-					attr: { title: '双击编辑' },
+					attr: {
+						title: '双击编辑',
+						...(isTags ? { 'data-property-type': 'tags' } : {}),
+					},
 				});
 				const textEl = chip.createSpan({
 					cls: 'f2-rename-chip-text',
@@ -395,7 +412,6 @@ export class RenamePromptModal extends Modal {
 					textEl.setAttr('contenteditable', 'true');
 					textEl.setAttr('spellcheck', 'false');
 					textEl.setAttr('role', 'textbox');
-					// Keep visible label; tags stay with leading # while editing.
 					textEl.setText(
 						useTagSuggest ? `#${normalizeTagName(item)}` : item,
 					);

@@ -228,6 +228,34 @@
 	display: none;
 }
 
+/* Tags property — Obsidian-aligned data-property-type="tags" */
+.f2-rename-list-field[data-property-type='tags'] .f2-rename-chip,
+.f2-rename-chip[data-property-type='tags'] {
+	background-color: var(--tag-background);
+	color: var(--tag-color);
+	border-color: var(--tag-border-color, transparent);
+}
+
+.f2-rename-list-field[data-property-type='tags'] .f2-rename-chip:hover,
+.f2-rename-chip[data-property-type='tags']:hover {
+	background-color: var(--tag-background-hover, var(--tag-background));
+}
+
+.f2-rename-list-field[data-property-type='tags'] .f2-rename-chip.is-editing {
+	border-color: var(--interactive-accent);
+	background-color: var(--tag-background);
+}
+
+.f2-rename-list-field[data-property-type='tags'] .f2-rename-chip-remove,
+.f2-rename-list-field[data-property-type='tags'] .f2-rename-chip-remove:hover {
+	color: var(--tag-color);
+	opacity: 0.75;
+}
+
+.f2-rename-list-field[data-property-type='tags'] .f2-rename-chip-remove:hover {
+	opacity: 1;
+}
+
 .f2-rename-chip {
 	display: inline-flex;
 	align-items: center;
