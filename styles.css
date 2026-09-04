@@ -322,7 +322,14 @@
 
 .f2-full-props-textarea {
 	resize: vertical;
-	min-height: 4rem;
+	min-height: 2.75rem;
+	max-height: 40vh;
+	overflow-y: auto;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+	line-height: 1.45;
+	field-sizing: content;
 }
 
 .f2-full-props-list-editor {

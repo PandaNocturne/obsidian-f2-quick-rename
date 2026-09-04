@@ -286,6 +286,29 @@ export function inferPropertyType(
 	return 'text';
 }
 
+/** Soft-wrap threshold: longer text uses a wrapping multiline editor. */
+const MULTILINE_TEXT_LENGTH = 48;
+
+/**
+ * True when a text property should use a wrapping multiline editor:
+ * contains newlines, or the content is long enough to overflow a single line.
+ */
+export function isMultilineTextValue(value: unknown): boolean {
+	if (typeof value !== 'string') return false;
+	if (/[\r\n]/.test(value)) return true;
+	return value.trim().length >= MULTILINE_TEXT_LENGTH;
+}
+
+/** Estimate visible rows for a wrapping textarea (hard newlines + soft wrap). */
+export function estimateMultilineRows(text: string, cols = 36): number {
+	const chunks = text.length > 0 ? text.split(/\r?\n/) : [''];
+	let rows = 0;
+	for (const chunk of chunks) {
+		rows += Math.max(1, Math.ceil(Math.max(chunk.length, 1) / cols));
+	}
+	return Math.min(12, Math.max(2, rows));
+}
+
 /**
  * Build editable states for every frontmatter key on the note
  * (Obsidian-style full properties panel).
@@ -303,13 +326,14 @@ export function buildFullPropertyStates(
 	for (const [key, raw] of Object.entries(frontmatter)) {
 		if (!key || key === 'position') continue;
 		const type = inferPropertyType(app, key, raw);
+		const value = readPropertyValue(raw, type);
 		fields.push({
 			key,
 			type,
 			label: key,
 			showHint: type === 'list',
-			multiline: false,
-			value: readPropertyValue(raw, type),
+			multiline: type === 'text' && isMultilineTextValue(value),
+			value,
 		});
 	}
 	return fields;

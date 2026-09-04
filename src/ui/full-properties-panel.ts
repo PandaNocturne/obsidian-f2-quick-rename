@@ -5,7 +5,11 @@ import {
 	type PropertyFieldType,
 	type PropertyValue,
 } from '../settings';
-import { readPropertyValue } from '../utils/properties';
+import {
+	estimateMultilineRows,
+	isMultilineTextValue,
+	readPropertyValue,
+} from '../utils/properties';
 import {
 	ListValueSuggest,
 	PropertyKeySuggest,
@@ -289,43 +293,110 @@ export class FullPropertiesPanel {
 				break;
 			case 'text':
 			default: {
-				if (field.multiline) {
-					const textarea = host.createEl('textarea', {
-						cls: 'f2-full-props-input f2-full-props-textarea',
-						attr: { rows: '3', spellcheck: 'false' },
-					});
-					textarea.value =
-						this.values[key] == null ? '' : String(this.values[key]);
-					textarea.addEventListener('input', () => {
-						this.setValue(key, textarea.value, false);
-					});
-					textarea.addEventListener('change', () => {
-						void this.persist(true);
-					});
+				const text =
+					this.values[key] == null ? '' : String(this.values[key]);
+				const useMultiline =
+					field.multiline || isMultilineTextValue(text);
+				if (useMultiline) {
+					this.renderMultilineText(host, field, key, text);
 				} else {
-					const input = host.createEl('input', {
-						type: 'text',
-						cls: 'f2-full-props-input',
-						attr: {
-							spellcheck: 'false',
-							autocomplete: 'off',
-							placeholder: '没有值',
-						},
-					});
-					input.value =
-						this.values[key] == null ? '' : String(this.values[key]);
-					input.addEventListener('input', () => {
-						this.setValue(key, input.value, false);
-					});
-					input.addEventListener('change', () => {
-						void this.persist(true);
-					});
+					this.renderSingleLineText(host, field, key, text, index);
 				}
 				break;
 			}
 		}
+	}
 
-		void index;
+	private renderMultilineText(
+		host: HTMLElement,
+		field: PropertyFieldState,
+		key: string,
+		text: string,
+	): void {
+		field.multiline = true;
+		const textarea = host.createEl('textarea', {
+			cls: 'f2-full-props-input f2-full-props-textarea',
+			attr: {
+				rows: String(estimateMultilineRows(text)),
+				spellcheck: 'false',
+				placeholder: '没有值',
+				wrap: 'soft',
+			},
+		});
+		textarea.value = text;
+		const syncRows = (): void => {
+			textarea.rows = estimateMultilineRows(textarea.value);
+		};
+		textarea.addEventListener('input', () => {
+			field.multiline = isMultilineTextValue(textarea.value);
+			this.setValue(key, textarea.value, false);
+			syncRows();
+			// Shrink back to single-line when content becomes short again.
+			if (!field.multiline) {
+				const index = this.fields.findIndex((item) => item.key === key);
+				if (index >= 0) {
+					this.renderValueEditor(host, field, index);
+					const input = host.querySelector('input');
+					input?.focus();
+					input?.setSelectionRange(
+						textarea.value.length,
+						textarea.value.length,
+					);
+				}
+			}
+		});
+		textarea.addEventListener('change', () => {
+			void this.persist(true);
+		});
+	}
+
+	private renderSingleLineText(
+		host: HTMLElement,
+		field: PropertyFieldState,
+		key: string,
+		text: string,
+		index: number,
+	): void {
+		const input = host.createEl('input', {
+			type: 'text',
+			cls: 'f2-full-props-input',
+			attr: {
+				spellcheck: 'false',
+				autocomplete: 'off',
+				placeholder: '没有值',
+			},
+		});
+		input.value = text;
+		input.addEventListener('input', () => {
+			const next = input.value;
+			if (isMultilineTextValue(next)) {
+				field.multiline = true;
+				this.values[key] = next;
+				field.value = next;
+				this.renderValueEditor(host, field, index);
+				const textarea = host.querySelector('textarea');
+				textarea?.focus();
+				textarea?.setSelectionRange(next.length, next.length);
+				this.schedulePersist();
+				return;
+			}
+			this.setValue(key, next, false);
+		});
+		input.addEventListener('change', () => {
+			void this.persist(true);
+		});
+		input.addEventListener('paste', () => {
+			window.setTimeout(() => {
+				if (!isMultilineTextValue(input.value)) return;
+				field.multiline = true;
+				this.values[key] = input.value;
+				field.value = input.value;
+				this.renderValueEditor(host, field, index);
+				const textarea = host.querySelector('textarea');
+				textarea?.focus();
+				this.schedulePersist();
+			}, 0);
+		});
 	}
 
 	private renderListEditor(
@@ -538,11 +609,11 @@ export class FullPropertiesPanel {
 		const key = field.key;
 		const raw = this.values[key];
 		field.type = type;
-		field.showHint = type === 'list';
-		field.multiline = false;
 		const next = readPropertyValue(raw, type);
 		field.value = next;
 		this.values[key] = next;
+		field.showHint = type === 'list';
+		field.multiline = type === 'text' && isMultilineTextValue(next);
 		this.renderList();
 		void this.persist(true);
 	}
