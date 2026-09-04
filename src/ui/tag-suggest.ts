@@ -4,6 +4,7 @@ import {
 	getAllTags,
 	prepareFuzzySearch,
 } from 'obsidian';
+import type { PropertyFieldType } from '../settings';
 
 type MetadataCacheWithTags = App['metadataCache'] & {
 	getTags?: () => Record<string, number>;
@@ -243,6 +244,178 @@ export class ListValueSuggest extends AbstractInputSuggest<string> {
 			);
 		}
 		return this.valueCache;
+	}
+}
+
+type MetadataTypeManagerLike = {
+	properties?: Record<string, { name?: string; type?: string }>;
+	getAllProperties?: () => Record<
+		string,
+		{ name?: string; type?: string; count?: number }
+	>;
+};
+
+type AppWithPropertyTypes = App & {
+	metadataTypeManager?: MetadataTypeManagerLike;
+};
+
+/** Map Obsidian property widget types to our editor types. */
+export function mapObsidianPropertyType(
+	type: string | undefined,
+): PropertyFieldType | undefined {
+	if (!type) return undefined;
+	switch (type) {
+		case 'checkbox':
+			return 'checkbox';
+		case 'date':
+			return 'date';
+		case 'datetime':
+			return 'datetime';
+		case 'number':
+			return 'number';
+		case 'multitext':
+		case 'tags':
+		case 'aliases':
+			return 'list';
+		case 'text':
+			return 'text';
+		default:
+			return undefined;
+	}
+}
+
+export function getRegisteredPropertyType(
+	app: App,
+	key: string,
+): string | undefined {
+	const trimmed = key.trim();
+	if (!trimmed) return undefined;
+	const manager = (app as AppWithPropertyTypes).metadataTypeManager;
+	if (!manager) return undefined;
+
+	const all = manager.getAllProperties?.();
+	if (all) {
+		const direct = all[trimmed];
+		if (direct?.type) return direct.type;
+		const lower = trimmed.toLowerCase();
+		for (const [name, info] of Object.entries(all)) {
+			if (name.toLowerCase() === lower && info.type) return info.type;
+		}
+	}
+
+	const props = manager.properties;
+	if (props) {
+		const direct = props[trimmed];
+		if (direct?.type) return direct.type;
+		const lower = trimmed.toLowerCase();
+		for (const [name, info] of Object.entries(props)) {
+			if (name.toLowerCase() === lower && info.type) return info.type;
+		}
+	}
+
+	const normalized = trimmed.toLowerCase();
+	if (normalized === 'tags') return 'tags';
+	if (normalized === 'aliases') return 'aliases';
+	return undefined;
+}
+
+/** Collect known frontmatter property names from the vault. */
+export function collectVaultPropertyKeys(app: App): string[] {
+	const keys = new Set<string>();
+	const manager = (app as AppWithPropertyTypes).metadataTypeManager;
+
+	const all = manager?.getAllProperties?.();
+	if (all) {
+		for (const [name, info] of Object.entries(all)) {
+			const key = (info.name ?? name).trim();
+			if (key) keys.add(key);
+		}
+	}
+
+	const props = manager?.properties;
+	if (props) {
+		for (const [name, info] of Object.entries(props)) {
+			const key = (info.name ?? name).trim();
+			if (key) keys.add(key);
+		}
+	}
+
+	for (const file of app.vault.getMarkdownFiles()) {
+		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+		if (!frontmatter) continue;
+		for (const key of Object.keys(frontmatter)) {
+			if (key === 'position') continue;
+			keys.add(key);
+		}
+	}
+
+	return [...keys].sort((a, b) =>
+		a.localeCompare(b, undefined, { sensitivity: 'base' }),
+	);
+}
+
+/**
+ * Suggest vault property names for the settings “属性名” input.
+ */
+export class PropertyKeySuggest extends AbstractInputSuggest<string> {
+	private readonly onChoose: (key: string) => void;
+	private keyCache: string[] | null = null;
+
+	constructor(
+		app: App,
+		inputEl: HTMLInputElement,
+		onChoose: (key: string) => void,
+	) {
+		super(app, inputEl);
+		this.onChoose = onChoose;
+		this.limit = 40;
+	}
+
+	protected getSuggestions(query: string): string[] {
+		const needle = query.trim().toLowerCase();
+		const keys = this.getKeyCache();
+
+		if (!needle) {
+			return keys.slice(0, this.limit || 40);
+		}
+
+		const fuzzy = prepareFuzzySearch(needle);
+		const scored: { key: string; score: number }[] = [];
+		for (const key of keys) {
+			const result = fuzzy(key);
+			if (result) {
+				scored.push({ key, score: result.score });
+			} else if (key.toLowerCase().includes(needle)) {
+				scored.push({ key, score: -1 });
+			}
+		}
+		scored.sort((a, b) => b.score - a.score);
+		return scored.map((item) => item.key);
+	}
+
+	renderSuggestion(value: string, el: HTMLElement): void {
+		el.addClass('f2-rename-property-key-suggest-item');
+		el.createSpan({ text: value });
+		const type = getRegisteredPropertyType(this.app, value);
+		if (type) {
+			el.createSpan({
+				text: type,
+				cls: 'f2-rename-property-key-suggest-type',
+			});
+		}
+	}
+
+	selectSuggestion(value: string, _evt: MouseEvent | KeyboardEvent): void {
+		this.onChoose(value);
+		this.setValue(value);
+		this.close();
+	}
+
+	private getKeyCache(): string[] {
+		if (!this.keyCache) {
+			this.keyCache = collectVaultPropertyKeys(this.app);
+		}
+		return this.keyCache;
 	}
 }
 

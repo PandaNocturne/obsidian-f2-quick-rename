@@ -8,6 +8,11 @@ import {
 	type PropertyFieldType,
 	type PropertySettingsItem,
 } from '../settings';
+import {
+	PropertyKeySuggest,
+	getRegisteredPropertyType,
+	mapObsidianPropertyType,
+} from './tag-suggest';
 
 type ToggleKey = {
 	[K in keyof F2RenameSettings]: F2RenameSettings[K] extends boolean
@@ -101,7 +106,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName('文档属性').setHeading();
 
 		containerEl.createEl('p', {
-			text: '配置重命名面板「更多」中可编辑的属性。拖动左侧手柄调整顺序；可插入分隔符。列表开启「是否提示」后，输入时会从库中该属性已有值弹出下拉建议。',
+			text: '配置重命名面板「更多」中可编辑的属性。拖动左侧手柄调整顺序；可插入分隔符。列表开启「提示」后，输入时会从库中该属性已有值弹出下拉建议。',
 			cls: 'setting-item-description',
 		});
 
@@ -178,10 +183,41 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			cls: 'f2-rename-setting-property-line',
 		});
 
-		this.createLabeledInput(line, '属性名', field.key, async (value) => {
-			field.key = value.trim();
-			await this.plugin.saveSettings();
-		}).addClass('f2-rename-setting-key');
+		const keyInput = this.createLabeledInput(
+			line,
+			'属性名',
+			field.key,
+			async (value) => {
+				field.key = value.trim();
+				await this.plugin.saveSettings();
+			},
+		);
+		keyInput.addClass('f2-rename-setting-key');
+		keyInput.setAttr('placeholder', '从库中选择或输入');
+		new PropertyKeySuggest(this.app, keyInput, (key) => {
+			const prevType = field.type;
+			field.key = key;
+			const mapped = mapObsidianPropertyType(
+				getRegisteredPropertyType(this.app, key),
+			);
+			if (mapped) {
+				field.type = mapped;
+				if (mapped !== 'list') {
+					field.showHint = false;
+				}
+			}
+			if (!field.label?.trim()) {
+				field.label = key;
+			}
+			void (async () => {
+				await this.plugin.saveSettings();
+				if (field.type !== prevType) {
+					this.display();
+				} else {
+					keyInput.value = key;
+				}
+			})();
+		});
 
 		const typeWrap = line.createDiv({
 			cls: 'f2-rename-setting-labeled',
@@ -226,7 +262,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 				cls: 'f2-rename-setting-labeled f2-rename-setting-hint-toggle',
 			});
 			hintToggle.createSpan({
-				text: '是否提示',
+				text: '提示',
 				cls: 'f2-rename-setting-inline-label',
 			});
 			const checkbox = hintToggle.createEl('input', {

@@ -336,6 +336,19 @@
 	font-family: var(--font-interface);
 }
 
+.f2-rename-property-key-suggest-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	font-family: var(--font-interface);
+}
+
+.f2-rename-property-key-suggest-type {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
 /* Rename modal: property separators */
 .f2-rename-prop-separator {
 	display: flex;
