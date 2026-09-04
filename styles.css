@@ -567,7 +567,6 @@
 	gap: 0.4rem;
 	width: 100%;
 	box-sizing: border-box;
-	padding: 0.45rem;
 	border: 1px dashed var(--background-modifier-border);
 	border-radius: var(--radius-s);
 	min-height: 2.25rem;

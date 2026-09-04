@@ -247,12 +247,19 @@ export class ListValueSuggest extends AbstractInputSuggest<string> {
 	}
 }
 
+type PropertyInfoLike = {
+	name?: string;
+	type?: string;
+	count?: number;
+};
+
 type MetadataTypeManagerLike = {
-	properties?: Record<string, { name?: string; type?: string }>;
-	getAllProperties?: () => Record<
-		string,
-		{ name?: string; type?: string; count?: number }
-	>;
+	properties?: Record<string, PropertyInfoLike>;
+	/** Assigned widget types keyed by lowercase property name */
+	types?: Record<string, string>;
+	getAllProperties?: () => Record<string, PropertyInfoLike>;
+	getAssignedType?: (property: string) => string | null;
+	getPropertyInfo?: (property: string) => PropertyInfoLike;
 };
 
 type AppWithPropertyTypes = App & {
@@ -261,7 +268,7 @@ type AppWithPropertyTypes = App & {
 
 /** Map Obsidian property widget types to our editor types. */
 export function mapObsidianPropertyType(
-	type: string | undefined,
+	type: string | undefined | null,
 ): PropertyFieldType | undefined {
 	if (!type) return undefined;
 	switch (type) {
@@ -278,45 +285,128 @@ export function mapObsidianPropertyType(
 		case 'aliases':
 			return 'list';
 		case 'text':
+		case 'file':
+		case 'folder':
 			return 'text';
 		default:
 			return undefined;
 	}
 }
 
+function inferTypeFromSample(raw: unknown): PropertyFieldType | undefined {
+	if (raw == null) return undefined;
+	if (typeof raw === 'boolean') return 'checkbox';
+	if (typeof raw === 'number' && Number.isFinite(raw)) return 'number';
+	if (Array.isArray(raw)) return 'list';
+	if (typeof raw === 'string') {
+		const text = raw.trim();
+		if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return 'date';
+		if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(text)) return 'datetime';
+		return 'text';
+	}
+	return undefined;
+}
+
+/** Infer editor type from sample values of this key in the vault. */
+export function inferPropertyTypeFromVault(
+	app: App,
+	key: string,
+): PropertyFieldType | undefined {
+	const trimmed = key.trim();
+	if (!trimmed) return undefined;
+
+	const counts = new Map<PropertyFieldType, number>();
+	for (const file of app.vault.getMarkdownFiles()) {
+		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+		if (!frontmatter) continue;
+		const inferred = inferTypeFromSample(
+			readFrontmatterEntry(frontmatter, trimmed),
+		);
+		if (!inferred) continue;
+		counts.set(inferred, (counts.get(inferred) ?? 0) + 1);
+		if (counts.size > 0) {
+			const total = [...counts.values()].reduce((a, b) => a + b, 0);
+			if (total >= 8) break;
+		}
+	}
+
+	let best: PropertyFieldType | undefined;
+	let bestCount = 0;
+	for (const [type, count] of counts) {
+		if (count > bestCount) {
+			best = type;
+			bestCount = count;
+		}
+	}
+	return best;
+}
+
+/**
+ * Resolve Obsidian's registered widget type string for a property key.
+ * Keys in the type manager are usually lowercase.
+ */
 export function getRegisteredPropertyType(
 	app: App,
 	key: string,
 ): string | undefined {
 	const trimmed = key.trim();
 	if (!trimmed) return undefined;
+
+	const normalized = trimmed.toLowerCase();
+	if (normalized === 'tags') return 'tags';
+	if (normalized === 'aliases') return 'aliases';
+
 	const manager = (app as AppWithPropertyTypes).metadataTypeManager;
 	if (!manager) return undefined;
 
+	const assigned = manager.getAssignedType?.(trimmed);
+	if (assigned) return assigned;
+
+	const fromTypes =
+		manager.types?.[trimmed] ?? manager.types?.[normalized];
+	if (typeof fromTypes === 'string' && fromTypes) return fromTypes;
+
+	const info = manager.getPropertyInfo?.(trimmed);
+	if (info?.type) return info.type;
+
 	const all = manager.getAllProperties?.();
 	if (all) {
-		const direct = all[trimmed];
+		const direct = all[trimmed] ?? all[normalized];
 		if (direct?.type) return direct.type;
-		const lower = trimmed.toLowerCase();
-		for (const [name, info] of Object.entries(all)) {
-			if (name.toLowerCase() === lower && info.type) return info.type;
+		for (const [name, entry] of Object.entries(all)) {
+			if (name.toLowerCase() === normalized && entry.type) {
+				return entry.type;
+			}
 		}
 	}
 
 	const props = manager.properties;
 	if (props) {
-		const direct = props[trimmed];
+		const direct = props[trimmed] ?? props[normalized];
 		if (direct?.type) return direct.type;
-		const lower = trimmed.toLowerCase();
-		for (const [name, info] of Object.entries(props)) {
-			if (name.toLowerCase() === lower && info.type) return info.type;
+		for (const [name, entry] of Object.entries(props)) {
+			if (name.toLowerCase() === normalized && entry.type) {
+				return entry.type;
+			}
 		}
 	}
 
-	const normalized = trimmed.toLowerCase();
-	if (normalized === 'tags') return 'tags';
-	if (normalized === 'aliases') return 'aliases';
 	return undefined;
+}
+
+/**
+ * Best-effort editor type for a property key:
+ * registered Obsidian type first, then infer from vault values.
+ */
+export function resolvePropertyFieldType(
+	app: App,
+	key: string,
+): PropertyFieldType | undefined {
+	const registered = mapObsidianPropertyType(
+		getRegisteredPropertyType(app, key),
+	);
+	if (registered) return registered;
+	return inferPropertyTypeFromVault(app, key);
 }
 
 /** Collect known frontmatter property names from the vault. */
@@ -396,18 +486,20 @@ export class PropertyKeySuggest extends AbstractInputSuggest<string> {
 	renderSuggestion(value: string, el: HTMLElement): void {
 		el.addClass('f2-rename-property-key-suggest-item');
 		el.createSpan({ text: value });
-		const type = getRegisteredPropertyType(this.app, value);
+		const type =
+			getRegisteredPropertyType(this.app, value) ??
+			resolvePropertyFieldType(this.app, value);
 		if (type) {
 			el.createSpan({
-				text: type,
+				text: String(type),
 				cls: 'f2-rename-property-key-suggest-type',
 			});
 		}
 	}
 
 	selectSuggestion(value: string, _evt: MouseEvent | KeyboardEvent): void {
-		this.onChoose(value);
 		this.setValue(value);
+		this.onChoose(value);
 		this.close();
 	}
 

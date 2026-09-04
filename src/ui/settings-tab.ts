@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, setIcon } from 'obsidian';
+import { App, Modal, PluginSettingTab, Setting, setIcon } from 'obsidian';
 import type F2RenamePlugin from '../main';
 import {
 	DEFAULT_PROPERTY_FIELDS,
@@ -14,10 +14,45 @@ import {
 } from '../settings';
 import {
 	PropertyKeySuggest,
-	getRegisteredPropertyType,
-	mapObsidianPropertyType,
+	resolvePropertyFieldType,
 } from './tag-suggest';
 
+class ConfirmModal extends Modal {
+	constructor(
+		app: App,
+		private readonly heading: string,
+		private readonly message: string,
+		private readonly confirmText: string,
+		private readonly onConfirm: () => void | Promise<void>,
+	) {
+		super(app);
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.createEl('h2', { text: this.heading });
+		contentEl.createEl('p', { text: this.message });
+
+		new Setting(contentEl)
+			.addButton((btn) =>
+				btn.setButtonText('取消').onClick(() => this.close()),
+			)
+			.addButton((btn) =>
+				btn
+					.setButtonText(this.confirmText)
+					.setWarning()
+					.onClick(() => {
+						this.close();
+						void this.onConfirm();
+					}),
+			);
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+	}
+}
 type ToggleKey = {
 	[K in keyof F2RenameSettings]: F2RenameSettings[K] extends boolean
 		? K
@@ -168,13 +203,21 @@ export class F2RenameSettingTab extends PluginSettingTab {
 				}),
 			)
 			.addButton((btn) =>
-				btn.setButtonText('恢复默认').onClick(async () => {
-					this.plugin.settings.propertyFields =
-						DEFAULT_PROPERTY_FIELDS.map((item) =>
-							clonePropertySettingsItem(item),
-						);
-					await this.plugin.saveSettings();
-					this.display();
+				btn.setButtonText('恢复默认').onClick(() => {
+					new ConfirmModal(
+						this.app,
+						'恢复默认文档属性？',
+						'将清除当前属性配置（含顺序、分隔符与并排容器），并恢复为默认的 title / aliases / tags。此操作不可撤销。',
+						'确认恢复',
+						async () => {
+							this.plugin.settings.propertyFields =
+								DEFAULT_PROPERTY_FIELDS.map((item) =>
+									clonePropertySettingsItem(item),
+								);
+							await this.plugin.saveSettings();
+							this.display();
+						},
+					).open();
 				}),
 			);
 	}
@@ -227,14 +270,13 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		keyInput.addClass('f2-rename-setting-key');
 		keyInput.setAttr('placeholder', '从库中选择或输入');
 		new PropertyKeySuggest(this.app, keyInput, (key) => {
-			const prevType = field.type;
 			field.key = key;
-			const mapped = mapObsidianPropertyType(
-				getRegisteredPropertyType(this.app, key),
-			);
+			const mapped = resolvePropertyFieldType(this.app, key);
 			if (mapped) {
 				field.type = mapped;
 				if (mapped !== 'list') {
+					field.showHint = false;
+				} else if (field.showHint == null) {
 					field.showHint = false;
 				}
 			}
@@ -243,11 +285,8 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			}
 			void (async () => {
 				await this.plugin.saveSettings();
-				if (field.type !== prevType) {
-					this.display();
-				} else {
-					keyInput.value = key;
-				}
+				// Always re-render so the type dropdown reflects the resolved type.
+				this.display();
 			})();
 		});
 
@@ -391,15 +430,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		});
 
 		this.createDeleteButton(header, () => {
-			const list = this.plugin.settings.propertyFields;
-			const [removed] = list.splice(rowIndex, 1);
-			if (removed && isPropertyRow(removed) && removed.children.length) {
-				list.splice(
-					rowIndex,
-					0,
-					...removed.children.map((child) => ({ ...child })),
-				);
-			}
+			this.plugin.settings.propertyFields.splice(rowIndex, 1);
 		});
 
 		const body = row.createDiv({
