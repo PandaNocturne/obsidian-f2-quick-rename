@@ -16,6 +16,12 @@ function toDisplayString(value: unknown): string {
 		return String(value);
 	}
 	if (typeof value === 'bigint') return value.toString();
+	if (Array.isArray(value)) {
+		return value
+			.map((item) => toDisplayString(item).trim())
+			.filter((item) => item.length > 0)
+			.join(', ');
+	}
 	return '';
 }
 
@@ -45,6 +51,16 @@ export function readPropertyValue(
 			return Boolean(raw);
 		case 'number': {
 			if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+			if (Array.isArray(raw)) {
+				const first = raw.find(
+					(item) =>
+						typeof item === 'number' ||
+						(typeof item === 'string' && item.trim() !== ''),
+				);
+				if (first == null) return null;
+				const n = typeof first === 'number' ? first : Number(first);
+				return Number.isFinite(n) ? n : null;
+			}
 			if (raw == null || raw === '') return null;
 			const n = Number(raw);
 			return Number.isFinite(n) ? n : null;
@@ -55,6 +71,7 @@ export function readPropertyValue(
 		case 'datetime':
 		case 'text':
 		default:
+			// Arrays (e.g. former list properties) coerce to a joined string.
 			return toDisplayString(raw);
 	}
 }
@@ -70,6 +87,12 @@ export function normalizePropertyValue(
 			if (value === null || value === '' || value === undefined) {
 				return undefined;
 			}
+			if (Array.isArray(value)) {
+				const first = value.find((item) => String(item).trim());
+				if (first == null) return undefined;
+				const n = Number(first);
+				return Number.isFinite(n) ? n : undefined;
+			}
 			const n = typeof value === 'number' ? value : Number(value);
 			return Number.isFinite(n) ? n : undefined;
 		}
@@ -82,7 +105,14 @@ export function normalizePropertyValue(
 		case 'date':
 		case 'datetime':
 		case 'text': {
-			const text = value == null ? '' : String(value).trim();
+			const text = Array.isArray(value)
+				? value
+						.map((item) => String(item).trim())
+						.filter(Boolean)
+						.join(', ')
+				: value == null
+					? ''
+					: String(value).trim();
 			return text.length > 0 ? text : undefined;
 		}
 		default:
@@ -96,6 +126,20 @@ export function getPropertyFieldConfigs(
 	return flattenPropertyFieldConfigs(items);
 }
 
+function readFrontmatterValue(
+	frontmatter: Record<string, unknown>,
+	key: string,
+): unknown {
+	if (Object.prototype.hasOwnProperty.call(frontmatter, key)) {
+		return frontmatter[key];
+	}
+	const lower = key.toLowerCase();
+	for (const [entryKey, value] of Object.entries(frontmatter)) {
+		if (entryKey.toLowerCase() === lower) return value;
+	}
+	return undefined;
+}
+
 function toFieldState(
 	frontmatter: Record<string, unknown>,
 	item: PropertyFieldConfig,
@@ -107,7 +151,7 @@ function toFieldState(
 		type: item.type,
 		label: item.label?.trim() || key,
 		showHint: item.showHint === true,
-		value: readPropertyValue(frontmatter[key], item.type),
+		value: readPropertyValue(readFrontmatterValue(frontmatter, key), item.type),
 	};
 }
 
