@@ -18,6 +18,7 @@ import {
 	resolvePropertyTypeAttr,
 	shouldSuggestTags,
 } from './tag-suggest';
+import { WikiLinkSuggest } from './wiki-link-suggest';
 
 export interface RenamePromptResult {
 	name: string;
@@ -396,6 +397,10 @@ export class RenamePromptModal extends Modal {
 				this.submit(null);
 			}
 		});
+		this.attachWikiLinkSuggest(textarea, (value) => {
+			this.propertyValues[field.key] = value;
+			this.schedulePersistProperties();
+		});
 	}
 
 	private renderCheckboxField(
@@ -482,6 +487,12 @@ export class RenamePromptModal extends Modal {
 			void this.persistProperties(true);
 		});
 		this.bindEscape(input);
+		if (inputType === 'text') {
+			this.attachWikiLinkSuggest(input, (value) => {
+				this.propertyValues[field.key] = value;
+				this.schedulePersistProperties();
+			});
+		}
 	}
 
 	private renderListField(
@@ -750,6 +761,7 @@ export class RenamePromptModal extends Modal {
 		};
 
 		if (field.showHint) {
+			const sourcePath = this.getSuggestSourcePath();
 			if (useTagSuggest) {
 				new TagInputSuggest(
 					this.app,
@@ -759,6 +771,7 @@ export class RenamePromptModal extends Modal {
 						suggestPicked = true;
 						addItemValue(tag);
 					},
+					sourcePath,
 				);
 			} else {
 				new ListValueSuggest(
@@ -770,8 +783,11 @@ export class RenamePromptModal extends Modal {
 						suggestPicked = true;
 						addItemValue(value);
 					},
+					sourcePath,
 				);
 			}
+		} else {
+			this.attachWikiLinkSuggest(input);
 		}
 
 		input.addEventListener('keydown', (evt) => {
@@ -892,7 +908,27 @@ export class RenamePromptModal extends Modal {
 			});
 		}
 
+		this.attachWikiLinkSuggest(input, onInput);
 		return input;
+	}
+
+	private getSuggestSourcePath(): string {
+		return (
+			this.options.sourcePath ??
+			this.options.relatedFile?.path ??
+			this.app.workspace.getActiveFile()?.path ??
+			''
+		);
+	}
+
+	private attachWikiLinkSuggest(
+		inputEl: HTMLInputElement | HTMLTextAreaElement,
+		onInserted?: (value: string) => void,
+	): void {
+		new WikiLinkSuggest(this.app, inputEl, {
+			sourcePath: this.getSuggestSourcePath(),
+			onInserted,
+		});
 	}
 
 	private bindEscape(input: HTMLInputElement): void {

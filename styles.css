@@ -387,8 +387,20 @@
 	width: 100%;
 }
 
-.f2-rename-tag-suggest-item {
+.f2-rename-wiki-suggest-item {
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
 	font-family: var(--font-interface);
+}
+
+.f2-rename-wiki-suggest-name {
+	color: var(--text-normal);
+}
+
+.f2-rename-wiki-suggest-path {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
 }
 
 .f2-rename-property-key-suggest-item {

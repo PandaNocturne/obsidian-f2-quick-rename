@@ -5,6 +5,11 @@ import {
 	prepareFuzzySearch,
 } from 'obsidian';
 import type { PropertyFieldType } from '../settings';
+import {
+	getActiveWikiLinkQuery,
+	insertWikiLinkAtCursor,
+	suggestWikiLinkTexts,
+} from './wiki-link-suggest';
 
 type MetadataCacheWithTags = App['metadataCache'] & {
 	getTags?: () => Record<string, number>;
@@ -109,25 +114,44 @@ export function normalizeTagName(tag: string): string {
 
 /**
  * Live tag suggestions for a text input (Obsidian AbstractInputSuggest).
+ * Also completes vault files when typing `[[`.
  */
 export class TagInputSuggest extends AbstractInputSuggest<string> {
+	private readonly inputEl: HTMLInputElement;
 	private readonly getExcluded: () => Iterable<string>;
 	private readonly onChoose: (tag: string) => void;
+	private readonly sourcePath: string;
 	private tagCache: string[] | null = null;
+	private wikiMode = false;
 
 	constructor(
 		app: App,
 		inputEl: HTMLInputElement,
 		getExcluded: () => Iterable<string>,
 		onChoose: (tag: string) => void,
+		sourcePath = '',
 	) {
 		super(app, inputEl);
+		this.inputEl = inputEl;
 		this.getExcluded = getExcluded;
 		this.onChoose = onChoose;
+		this.sourcePath = sourcePath;
 		this.limit = 30;
 	}
 
 	protected getSuggestions(query: string): string[] {
+		const wiki = getActiveWikiLinkQuery(this.inputEl);
+		if (wiki) {
+			this.wikiMode = true;
+			return suggestWikiLinkTexts(
+				this.app,
+				wiki.query,
+				this.sourcePath,
+				this.limit || 30,
+			);
+		}
+		this.wikiMode = false;
+
 		const needle = normalizeTagName(query).toLowerCase();
 		const excluded = new Set(
 			[...this.getExcluded()].map((t) =>
@@ -157,11 +181,21 @@ export class TagInputSuggest extends AbstractInputSuggest<string> {
 	}
 
 	renderSuggestion(value: string, el: HTMLElement): void {
+		if (this.wikiMode || value.startsWith('[[')) {
+			el.addClass('f2-rename-wiki-suggest-item');
+			el.createSpan({ text: value });
+			return;
+		}
 		el.addClass('f2-rename-tag-suggest-item');
 		el.createSpan({ text: `#${value}` });
 	}
 
 	selectSuggestion(value: string, _evt: MouseEvent | KeyboardEvent): void {
+		if (this.wikiMode || value.startsWith('[[')) {
+			insertWikiLinkAtCursor(this.inputEl, value);
+			this.close();
+			return;
+		}
 		this.onChoose(normalizeTagName(value));
 		this.setValue('');
 		this.close();
@@ -177,12 +211,16 @@ export class TagInputSuggest extends AbstractInputSuggest<string> {
 
 /**
  * Suggest existing vault values for a list-type frontmatter property.
+ * Also completes vault files when typing `[[`.
  */
 export class ListValueSuggest extends AbstractInputSuggest<string> {
+	private readonly inputEl: HTMLInputElement;
 	private readonly propertyKey: string;
 	private readonly getExcluded: () => Iterable<string>;
 	private readonly onChoose: (value: string) => void;
+	private readonly sourcePath: string;
 	private valueCache: string[] | null = null;
+	private wikiMode = false;
 
 	constructor(
 		app: App,
@@ -190,15 +228,30 @@ export class ListValueSuggest extends AbstractInputSuggest<string> {
 		propertyKey: string,
 		getExcluded: () => Iterable<string>,
 		onChoose: (value: string) => void,
+		sourcePath = '',
 	) {
 		super(app, inputEl);
+		this.inputEl = inputEl;
 		this.propertyKey = propertyKey;
 		this.getExcluded = getExcluded;
 		this.onChoose = onChoose;
+		this.sourcePath = sourcePath;
 		this.limit = 30;
 	}
 
 	protected getSuggestions(query: string): string[] {
+		const wiki = getActiveWikiLinkQuery(this.inputEl);
+		if (wiki) {
+			this.wikiMode = true;
+			return suggestWikiLinkTexts(
+				this.app,
+				wiki.query,
+				this.sourcePath,
+				this.limit || 30,
+			);
+		}
+		this.wikiMode = false;
+
 		const needle = query.trim().toLowerCase();
 		const excluded = new Set(
 			[...this.getExcluded()].map((item) => item.trim().toLowerCase()),
@@ -226,11 +279,21 @@ export class ListValueSuggest extends AbstractInputSuggest<string> {
 	}
 
 	renderSuggestion(value: string, el: HTMLElement): void {
+		if (this.wikiMode || value.startsWith('[[')) {
+			el.addClass('f2-rename-wiki-suggest-item');
+			el.createSpan({ text: value });
+			return;
+		}
 		el.addClass('f2-rename-list-suggest-item');
 		el.createSpan({ text: value });
 	}
 
 	selectSuggestion(value: string, _evt: MouseEvent | KeyboardEvent): void {
+		if (this.wikiMode || value.startsWith('[[')) {
+			insertWikiLinkAtCursor(this.inputEl, value);
+			this.close();
+			return;
+		}
 		this.onChoose(value);
 		this.setValue('');
 		this.close();
