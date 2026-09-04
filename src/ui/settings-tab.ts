@@ -6,6 +6,7 @@ import {
 	type F2RenameSettings,
 	type PropertyFieldConfig,
 	type PropertyFieldType,
+	type PropertySettingsItem,
 } from '../settings';
 
 type ToggleKey = {
@@ -60,6 +61,7 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 
 export class F2RenameSettingTab extends PluginSettingTab {
 	plugin: F2RenamePlugin;
+	private dragFromIndex: number | null = null;
 
 	constructor(app: App, plugin: F2RenamePlugin) {
 		super(app, plugin);
@@ -69,6 +71,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+		this.dragFromIndex = null;
 
 		new Setting(containerEl).setName('功能开关').setHeading();
 
@@ -98,80 +101,20 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName('文档属性').setHeading();
 
 		containerEl.createEl('p', {
-			text: '配置重命名面板「更多」中可编辑的属性。类型与 Obsidian 属性类型一致。',
+			text: '配置重命名面板「更多」中可编辑的属性。拖动左侧手柄调整顺序；可插入分隔符。列表开启「是否提示」后，输入时会从库中该属性已有值弹出下拉建议。',
 			cls: 'setting-item-description',
 		});
 
-		const fields = this.plugin.settings.propertyFields;
+		const listEl = containerEl.createDiv({
+			cls: 'f2-rename-setting-property-list',
+		});
 
-		fields.forEach((field, index) => {
-			const row = new Setting(containerEl);
-			row.settingEl.addClass('f2-rename-setting-property');
-
-			row.addText((text) => {
-				text.setPlaceholder('属性名，如 title')
-					.setValue(field.key)
-					.onChange(async (value) => {
-						field.key = value.trim();
-						if (!field.label || field.label === field.key) {
-							// keep label in sync when it was mirroring key
-						}
-						await this.plugin.saveSettings();
-					});
-				text.inputEl.addClass('f2-rename-setting-key');
-			});
-
-			row.addDropdown((dropdown) => {
-				for (const opt of PROPERTY_TYPE_OPTIONS) {
-					dropdown.addOption(opt.type, opt.label);
-				}
-				dropdown.setValue(field.type).onChange(async (value) => {
-					field.type = value as PropertyFieldType;
-					await this.plugin.saveSettings();
-					this.display();
-				});
-			});
-
-			row.addText((text) => {
-				text
-					.setPlaceholder(
-						field.type === 'list' ? '添加提示，如 添加标签' : '显示名（可选）',
-					)
-					.setValue(
-						field.type === 'list'
-							? (field.hint ?? '')
-							: (field.label ?? ''),
-					)
-					.onChange(async (value) => {
-						if (field.type === 'list') {
-							field.hint = value;
-						} else {
-							field.label = value;
-						}
-						await this.plugin.saveSettings();
-					});
-				text.inputEl.addClass('f2-rename-setting-meta');
-			});
-
-			row.addExtraButton((btn) => {
-				btn.setIcon('trash-2')
-					.setTooltip('移除')
-					.onClick(async () => {
-						this.plugin.settings.propertyFields.splice(index, 1);
-						await this.plugin.saveSettings();
-						this.display();
-					});
-			});
-
-			const typeOpt = PROPERTY_TYPE_OPTIONS.find(
-				(o) => o.type === field.type,
-			);
-			if (typeOpt) {
-				const iconEl = row.nameEl.createSpan({
-					cls: 'f2-rename-setting-type-icon',
-				});
-				setIcon(iconEl, typeOpt.icon);
-				row.setName(typeOpt.label);
+		const items = this.plugin.settings.propertyFields;
+		items.forEach((item, index) => {
+			if (item.kind === 'separator') {
+				this.renderSeparatorRow(listEl, item, index);
+			} else {
+				this.renderFieldRow(listEl, item, index);
 			}
 		});
 
@@ -179,10 +122,11 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			.addButton((btn) =>
 				btn.setButtonText('添加属性').onClick(async () => {
 					const next: PropertyFieldConfig = {
+						kind: 'field',
 						key: '',
 						type: 'text',
 						label: '',
-						hint: '',
+						showHint: false,
 					};
 					this.plugin.settings.propertyFields.push(next);
 					await this.plugin.saveSettings();
@@ -190,12 +134,289 @@ export class F2RenameSettingTab extends PluginSettingTab {
 				}),
 			)
 			.addButton((btn) =>
+				btn.setButtonText('添加分隔符').onClick(async () => {
+					this.plugin.settings.propertyFields.push({
+						kind: 'separator',
+						label: '',
+					});
+					await this.plugin.saveSettings();
+					this.display();
+				}),
+			)
+			.addButton((btn) =>
 				btn.setButtonText('恢复默认').onClick(async () => {
 					this.plugin.settings.propertyFields =
-						DEFAULT_PROPERTY_FIELDS.map((f) => ({ ...f }));
+						DEFAULT_PROPERTY_FIELDS.map((item) =>
+							item.kind === 'separator'
+								? { ...item }
+								: { ...item },
+						);
 					await this.plugin.saveSettings();
 					this.display();
 				}),
 			);
 	}
+
+	private renderFieldRow(
+		parent: HTMLElement,
+		field: PropertyFieldConfig,
+		index: number,
+	): void {
+		const row = parent.createDiv({
+			cls: 'f2-rename-setting-property-row',
+		});
+		row.dataset.index = String(index);
+
+		const handle = this.createDragHandle(row);
+		this.attachDragHandlers(row, handle, index);
+
+		const main = row.createDiv({
+			cls: 'f2-rename-setting-property-main',
+		});
+
+		const line = main.createDiv({
+			cls: 'f2-rename-setting-property-line',
+		});
+
+		this.createLabeledInput(line, '属性名', field.key, async (value) => {
+			field.key = value.trim();
+			await this.plugin.saveSettings();
+		}).addClass('f2-rename-setting-key');
+
+		const typeWrap = line.createDiv({
+			cls: 'f2-rename-setting-labeled',
+		});
+		typeWrap.createSpan({
+			text: '类型',
+			cls: 'f2-rename-setting-inline-label',
+		});
+		const select = typeWrap.createEl('select', {
+			cls: 'dropdown f2-rename-setting-type',
+		});
+		for (const opt of PROPERTY_TYPE_OPTIONS) {
+			select.createEl('option', {
+				text: opt.label,
+				attr: { value: opt.type },
+			});
+		}
+		select.value = field.type;
+		select.addEventListener('change', () => {
+			void (async () => {
+				field.type = select.value as PropertyFieldType;
+				if (field.type !== 'list') {
+					field.showHint = false;
+				}
+				await this.plugin.saveSettings();
+				this.display();
+			})();
+		});
+
+		this.createLabeledInput(
+			line,
+			'别名',
+			field.label ?? '',
+			async (value) => {
+				field.label = value;
+				await this.plugin.saveSettings();
+			},
+		).addClass('f2-rename-setting-alias');
+
+		if (field.type === 'list') {
+			const hintToggle = line.createDiv({
+				cls: 'f2-rename-setting-labeled f2-rename-setting-hint-toggle',
+			});
+			hintToggle.createSpan({
+				text: '是否提示',
+				cls: 'f2-rename-setting-inline-label',
+			});
+			const checkbox = hintToggle.createEl('input', {
+				type: 'checkbox',
+				cls: 'f2-rename-setting-show-hint',
+			});
+			checkbox.checked = field.showHint === true;
+			checkbox.addEventListener('change', () => {
+				field.showHint = checkbox.checked;
+				void this.plugin.saveSettings();
+			});
+		}
+
+		this.createDeleteButton(row, index);
+	}
+
+	private renderSeparatorRow(
+		parent: HTMLElement,
+		item: Extract<PropertySettingsItem, { kind: 'separator' }>,
+		index: number,
+	): void {
+		const row = parent.createDiv({
+			cls: 'f2-rename-setting-property-row f2-rename-setting-separator-row',
+		});
+		row.dataset.index = String(index);
+
+		const handle = this.createDragHandle(row);
+		this.attachDragHandlers(row, handle, index);
+
+		const main = row.createDiv({
+			cls: 'f2-rename-setting-property-main',
+		});
+		const line = main.createDiv({
+			cls: 'f2-rename-setting-property-line',
+		});
+
+		line.createSpan({
+			text: '分隔符',
+			cls: 'f2-rename-setting-separator-badge',
+		});
+
+		this.createLabeledInput(
+			line,
+			'标题（可选）',
+			item.label ?? '',
+			async (value) => {
+				item.label = value;
+				await this.plugin.saveSettings();
+			},
+		).addClass('f2-rename-setting-separator-label');
+
+		this.createDeleteButton(row, index);
+	}
+
+	private createDragHandle(row: HTMLElement): HTMLElement {
+		const handle = row.createDiv({
+			cls: 'f2-rename-setting-drag-handle',
+			attr: {
+				title: '拖动排序',
+				'aria-label': '拖动排序',
+			},
+		});
+		setIcon(handle, 'grip-vertical');
+		return handle;
+	}
+
+	private createDeleteButton(row: HTMLElement, index: number): void {
+		const btn = row.createEl('button', {
+			cls: 'clickable-icon f2-rename-setting-remove',
+			attr: {
+				type: 'button',
+				'aria-label': '移除',
+			},
+		});
+		setIcon(btn, 'trash-2');
+		btn.addEventListener('click', () => {
+			void (async () => {
+				this.plugin.settings.propertyFields.splice(index, 1);
+				await this.plugin.saveSettings();
+				this.display();
+			})();
+		});
+	}
+
+	private createLabeledInput(
+		parent: HTMLElement,
+		label: string,
+		value: string,
+		onChange: (value: string) => void | Promise<void>,
+	): HTMLInputElement {
+		const wrap = parent.createDiv({
+			cls: 'f2-rename-setting-labeled',
+		});
+		wrap.createSpan({
+			text: label,
+			cls: 'f2-rename-setting-inline-label',
+		});
+		const input = wrap.createEl('input', {
+			type: 'text',
+			cls: 'f2-rename-setting-input',
+			value,
+		});
+		input.addEventListener('change', () => {
+			void onChange(input.value);
+		});
+		input.addEventListener('blur', () => {
+			void onChange(input.value);
+		});
+		return input;
+	}
+
+	private attachDragHandlers(
+		row: HTMLElement,
+		handle: HTMLElement,
+		index: number,
+	): void {
+		handle.setAttr('draggable', 'true');
+
+		handle.addEventListener('dragstart', (event) => {
+			this.dragFromIndex = index;
+			row.addClass('is-dragging');
+			event.dataTransfer?.setData('text/plain', String(index));
+			if (event.dataTransfer) {
+				event.dataTransfer.effectAllowed = 'move';
+			}
+		});
+
+		handle.addEventListener('dragend', () => {
+			row.removeClass('is-dragging');
+			this.dragFromIndex = null;
+			clearDropTargets(row.parentElement);
+		});
+
+		row.addEventListener('dragover', (event) => {
+			event.preventDefault();
+			if (event.dataTransfer) {
+				event.dataTransfer.dropEffect = 'move';
+			}
+			if (this.dragFromIndex === null || this.dragFromIndex === index) {
+				return;
+			}
+			clearDropTargets(row.parentElement);
+			const rect = row.getBoundingClientRect();
+			const before = event.clientY < rect.top + rect.height / 2;
+			row.addClass(before ? 'drop-before' : 'drop-after');
+		});
+
+		row.addEventListener('dragleave', (event) => {
+			const related = event.relatedTarget as Node | null;
+			if (related && row.contains(related)) return;
+			row.removeClass('drop-before');
+			row.removeClass('drop-after');
+		});
+
+		row.addEventListener('drop', (event) => {
+			event.preventDefault();
+			row.removeClass('drop-before');
+			row.removeClass('drop-after');
+
+			const from =
+				this.dragFromIndex ??
+				Number(event.dataTransfer?.getData('text/plain'));
+			if (!Number.isFinite(from) || from === index) return;
+
+			const rect = row.getBoundingClientRect();
+			const before = event.clientY < rect.top + rect.height / 2;
+			let to = before ? index : index + 1;
+			if (from < to) to -= 1;
+			if (from === to) return;
+
+			const list = this.plugin.settings.propertyFields;
+			const [moved] = list.splice(from, 1);
+			if (!moved) return;
+			list.splice(to, 0, moved);
+			void (async () => {
+				await this.plugin.saveSettings();
+				this.display();
+			})();
+		});
+	}
+}
+
+function clearDropTargets(parent: HTMLElement | null): void {
+	if (!parent) return;
+	parent
+		.querySelectorAll(
+			'.f2-rename-setting-property-row.drop-before, .f2-rename-setting-property-row.drop-after',
+		)
+		.forEach((el) => {
+			el.removeClass('drop-before');
+			el.removeClass('drop-after');
+		});
 }

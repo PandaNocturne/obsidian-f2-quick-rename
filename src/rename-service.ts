@@ -14,7 +14,7 @@ import {
 	stripExcalidrawBasename,
 } from './utils/embed';
 import {
-	buildPropertyStates,
+	buildPropertyPanelItems,
 	writePropertyValues,
 } from './utils/properties';
 import type { PropertyValue } from './settings';
@@ -157,7 +157,11 @@ export class RenameService {
 
 		const properties =
 			canEditProperties && target
-				? buildPropertyStates(this.app, target, settings.propertyFields)
+				? buildPropertyPanelItems(
+						this.app,
+						target,
+						settings.propertyFields,
+					)
 				: undefined;
 
 		const autoSaveProperties =
@@ -247,7 +251,11 @@ export class RenameService {
 
 		const canEditProperties = this.canEditProperties(target);
 		const properties = canEditProperties
-			? buildPropertyStates(this.app, target, settings.propertyFields)
+			? buildPropertyPanelItems(
+					this.app,
+					target,
+					settings.propertyFields,
+				)
 			: undefined;
 		const autoSaveProperties =
 			canEditProperties && settings.autoSaveProperties;
@@ -303,7 +311,9 @@ export class RenameService {
 			file &&
 				settings.editProperties &&
 				file.extension === 'md' &&
-				settings.propertyFields.length > 0,
+				settings.propertyFields.some(
+					(item) => item.kind !== 'separator' && item.key.trim(),
+				),
 		);
 	}
 

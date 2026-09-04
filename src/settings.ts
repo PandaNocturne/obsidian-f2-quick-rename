@@ -25,14 +25,26 @@ export const PROPERTY_TYPE_OPTIONS: PropertyTypeOption[] = [
 ];
 
 export interface PropertyFieldConfig {
+	kind?: 'field';
 	/** Frontmatter key, e.g. title / aliases / tags */
 	key: string;
 	type: PropertyFieldType;
-	/** Optional UI label; defaults to key */
+	/** Display alias in the rename panel; defaults to key */
 	label?: string;
-	/** Placeholder hint, especially useful for list “添加…” */
-	hint?: string;
+	/**
+	 * Whether list inputs show vault value suggestions (dropdown).
+	 * Defaults to false.
+	 */
+	showHint?: boolean;
 }
+
+export interface PropertySeparatorConfig {
+	kind: 'separator';
+	/** Optional caption on the divider */
+	label?: string;
+}
+
+export type PropertySettingsItem = PropertyFieldConfig | PropertySeparatorConfig;
 
 export type PropertyValue = string | number | boolean | string[] | null;
 
@@ -40,9 +52,13 @@ export interface PropertyFieldState {
 	key: string;
 	type: PropertyFieldType;
 	label: string;
-	hint?: string;
+	showHint: boolean;
 	value: PropertyValue;
 }
+
+export type PropertyPanelItem =
+	| { kind: 'field'; field: PropertyFieldState }
+	| { kind: 'separator'; label?: string };
 
 export interface F2RenameSettings {
 	/** When the cursor is on a wiki/markdown embed, rename that file. */
@@ -65,23 +81,25 @@ export interface F2RenameSettings {
 	 * (no need to click confirm for attributes).
 	 */
 	autoSaveProperties: boolean;
-	/** Frontmatter keys editable in the rename panel. */
-	propertyFields: PropertyFieldConfig[];
+	/** Frontmatter keys / separators editable in the rename panel. */
+	propertyFields: PropertySettingsItem[];
 }
 
-export const DEFAULT_PROPERTY_FIELDS: PropertyFieldConfig[] = [
-	{ key: 'title', type: 'text', label: 'title', hint: '文档标题' },
+export const DEFAULT_PROPERTY_FIELDS: PropertySettingsItem[] = [
+	{ kind: 'field', key: 'title', type: 'text', label: 'title', showHint: false },
 	{
+		kind: 'field',
 		key: 'aliases',
 		type: 'list',
 		label: 'aliases',
-		hint: '添加别名',
+		showHint: true,
 	},
 	{
+		kind: 'field',
 		key: 'tags',
 		type: 'list',
 		label: 'tags',
-		hint: '添加标签',
+		showHint: true,
 	},
 ];
 
@@ -93,5 +111,34 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	copyNameToClipboard: true,
 	editProperties: true,
 	autoSaveProperties: true,
-	propertyFields: DEFAULT_PROPERTY_FIELDS.map((f) => ({ ...f })),
+	propertyFields: DEFAULT_PROPERTY_FIELDS.map((item) =>
+		item.kind === 'separator' ? { ...item } : { ...item },
+	),
 };
+
+export function isPropertyField(
+	item: PropertySettingsItem,
+): item is PropertyFieldConfig {
+	return item.kind !== 'separator';
+}
+
+export function normalizePropertySettingsItem(
+	raw: PropertySettingsItem | Record<string, unknown>,
+): PropertySettingsItem {
+	const record = raw as Record<string, unknown>;
+	if (record.kind === 'separator') {
+		return {
+			kind: 'separator',
+			label: typeof record.label === 'string' ? record.label : '',
+		};
+	}
+	return {
+		kind: 'field',
+		key: typeof record.key === 'string' ? record.key : '',
+		type: (typeof record.type === 'string'
+			? record.type
+			: 'text') as PropertyFieldType,
+		label: typeof record.label === 'string' ? record.label : '',
+		showHint: record.showHint === true,
+	};
+}

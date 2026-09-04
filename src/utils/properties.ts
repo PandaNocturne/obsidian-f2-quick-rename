@@ -1,9 +1,12 @@
 import type { App, TFile } from 'obsidian';
-import type {
-	PropertyFieldConfig,
-	PropertyFieldState,
-	PropertyFieldType,
-	PropertyValue,
+import {
+	isPropertyField,
+	type PropertyFieldConfig,
+	type PropertyFieldState,
+	type PropertyFieldType,
+	type PropertyPanelItem,
+	type PropertySettingsItem,
+	type PropertyValue,
 } from '../settings';
 
 function toDisplayString(value: unknown): string {
@@ -87,36 +90,64 @@ export function normalizePropertyValue(
 	}
 }
 
-export function buildPropertyStates(
+export function getPropertyFieldConfigs(
+	items: PropertySettingsItem[],
+): PropertyFieldConfig[] {
+	return items.filter(isPropertyField);
+}
+
+export function buildPropertyPanelItems(
 	app: App,
 	file: TFile,
-	configs: PropertyFieldConfig[],
-): PropertyFieldState[] {
+	items: PropertySettingsItem[],
+): PropertyPanelItem[] {
 	const frontmatter: Record<string, unknown> =
 		app.metadataCache.getFileCache(file)?.frontmatter ?? {};
 
-	return configs
-		.filter((cfg) => cfg.key.trim().length > 0)
-		.map((cfg) => {
-			const key = cfg.key.trim();
-			return {
+	const result: PropertyPanelItem[] = [];
+	for (const item of items) {
+		if (item.kind === 'separator') {
+			result.push({ kind: 'separator', label: item.label });
+			continue;
+		}
+		const key = item.key.trim();
+		if (!key) continue;
+		result.push({
+			kind: 'field',
+			field: {
 				key,
-				type: cfg.type,
-				label: cfg.label?.trim() || key,
-				hint: cfg.hint,
-				value: readPropertyValue(frontmatter[key], cfg.type),
-			};
+				type: item.type,
+				label: item.label?.trim() || key,
+				showHint: item.showHint === true,
+				value: readPropertyValue(frontmatter[key], item.type),
+			},
 		});
+	}
+	return result;
+}
+
+/** @deprecated Prefer buildPropertyPanelItems */
+export function buildPropertyStates(
+	app: App,
+	file: TFile,
+	configs: PropertySettingsItem[],
+): PropertyFieldState[] {
+	return buildPropertyPanelItems(app, file, configs)
+		.filter(
+			(item): item is { kind: 'field'; field: PropertyFieldState } =>
+				item.kind === 'field',
+		)
+		.map((item) => item.field);
 }
 
 export async function writePropertyValues(
 	app: App,
 	file: TFile,
-	configs: PropertyFieldConfig[],
+	configs: PropertySettingsItem[],
 	values: Record<string, PropertyValue>,
 ): Promise<void> {
 	const byKey = new Map(
-		configs
+		getPropertyFieldConfigs(configs)
 			.filter((cfg) => cfg.key.trim())
 			.map((cfg) => [cfg.key.trim(), cfg] as const),
 	);

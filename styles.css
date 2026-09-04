@@ -336,30 +336,158 @@
 	font-family: var(--font-interface);
 }
 
-/* Settings: property field rows */
-.f2-rename-setting-property .setting-item-control {
-	flex-wrap: wrap;
-	justify-content: flex-end;
+/* Rename modal: property separators */
+.f2-rename-prop-separator {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	grid-column: 1 / -1;
+	margin: 0.35rem 0 0.15rem;
+	width: 100%;
 }
 
-.f2-rename-setting-key {
+.f2-rename-prop-separator-line {
+	flex: 1 1 auto;
+	height: 1px;
+	background: var(--background-modifier-border);
+}
+
+.f2-rename-prop-separator-label {
+	flex: 0 0 auto;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+}
+
+/* Settings: property field rows */
+.f2-rename-setting-property-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.45rem;
+	margin: 0.75rem 0 1rem;
+}
+
+.f2-rename-setting-property-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.45rem;
+	padding: 0.55rem 0.65rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	position: relative;
+}
+
+.f2-rename-setting-property-row.is-dragging {
+	opacity: 0.45;
+}
+
+.f2-rename-setting-property-row.drop-before::before,
+.f2-rename-setting-property-row.drop-after::after {
+	content: '';
+	position: absolute;
+	left: 0.4rem;
+	right: 0.4rem;
+	height: 2px;
+	background: var(--interactive-accent);
+	border-radius: 1px;
+	pointer-events: none;
+}
+
+.f2-rename-setting-property-row.drop-before::before {
+	top: -0.2rem;
+}
+
+.f2-rename-setting-property-row.drop-after::after {
+	bottom: -0.2rem;
+}
+
+.f2-rename-setting-separator-row {
+	background: var(--background-secondary);
+}
+
+.f2-rename-setting-drag-handle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-top: 0.35rem;
+	color: var(--text-muted);
+	cursor: grab;
+	touch-action: none;
+}
+
+.f2-rename-setting-drag-handle:active {
+	cursor: grabbing;
+}
+
+.f2-rename-setting-drag-handle svg {
+	width: 1rem;
+	height: 1rem;
+}
+
+.f2-rename-setting-property-main {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.f2-rename-setting-property-line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.55rem 0.75rem;
+}
+
+.f2-rename-setting-labeled {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-width: 0;
+}
+
+.f2-rename-setting-inline-label {
+	flex: 0 0 auto;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	white-space: nowrap;
+}
+
+.f2-rename-setting-inline-label::after {
+	content: '：';
+}
+
+.f2-rename-setting-input,
+.f2-rename-setting-type {
+	min-width: 6.5rem;
 	width: 8rem;
 }
 
-.f2-rename-setting-meta {
-	width: 9rem;
+.f2-rename-setting-alias {
+	width: 7rem;
 }
 
-.f2-rename-setting-type-icon {
-	display: inline-flex;
-	margin-right: 0.35rem;
-	vertical-align: middle;
-	opacity: 0.75;
+.f2-rename-setting-hint-toggle .f2-rename-setting-show-hint {
+	margin: 0;
 }
 
-.f2-rename-setting-type-icon svg {
-	width: 0.95rem;
-	height: 0.95rem;
+.f2-rename-setting-separator-badge {
+	flex: 0 0 auto;
+	padding: 0.1rem 0.4rem;
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.f2-rename-setting-separator-label {
+	width: 12rem;
+}
+
+.f2-rename-setting-remove {
+	margin-top: 0.25rem;
+	flex: 0 0 auto;
 }
 
 .f2-rename-footer {

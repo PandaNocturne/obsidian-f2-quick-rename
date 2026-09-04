@@ -1,4 +1,9 @@
-import { AbstractInputSuggest, App, getAllTags, prepareFuzzySearch } from 'obsidian';
+import {
+	AbstractInputSuggest,
+	App,
+	getAllTags,
+	prepareFuzzySearch,
+} from 'obsidian';
 
 type MetadataCacheWithTags = App['metadataCache'] & {
 	getTags?: () => Record<string, number>;
@@ -12,7 +17,9 @@ export function collectVaultTags(app: App): string[] {
 		return Object.keys(fromApi)
 			.map(normalizeTagName)
 			.filter((tag) => tag.length > 0)
-			.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+			.sort((a, b) =>
+				a.localeCompare(b, undefined, { sensitivity: 'base' }),
+			);
 	}
 
 	const tags = new Set<string>();
@@ -27,6 +34,70 @@ export function collectVaultTags(app: App): string[] {
 		}
 	}
 	return [...tags].sort((a, b) =>
+		a.localeCompare(b, undefined, { sensitivity: 'base' }),
+	);
+}
+
+function toDisplayString(value: unknown): string {
+	if (value == null) return '';
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean') {
+		return String(value);
+	}
+	return '';
+}
+
+function asStringList(raw: unknown): string[] {
+	if (raw == null) return [];
+	if (Array.isArray(raw)) {
+		return raw
+			.map((item) => toDisplayString(item).trim())
+			.filter((item) => item.length > 0);
+	}
+	if (typeof raw === 'string') {
+		return raw
+			.split(/[,\n]/)
+			.map((item) => item.trim())
+			.filter((item) => item.length > 0);
+	}
+	const single = toDisplayString(raw).trim();
+	return single ? [single] : [];
+}
+
+function readFrontmatterEntry(
+	frontmatter: Record<string, unknown>,
+	key: string,
+): unknown {
+	if (Object.prototype.hasOwnProperty.call(frontmatter, key)) {
+		return frontmatter[key];
+	}
+	const lower = key.toLowerCase();
+	for (const [entryKey, value] of Object.entries(frontmatter)) {
+		if (entryKey.toLowerCase() === lower) return value;
+	}
+	return undefined;
+}
+
+/** Unique values used by a frontmatter key across the vault. */
+export function collectPropertyListValues(app: App, key: string): string[] {
+	const trimmed = key.trim();
+	if (!trimmed) return [];
+
+	if (resolvePropertyTypeAttr(trimmed, 'list') === 'tags') {
+		return collectVaultTags(app);
+	}
+
+	const values = new Set<string>();
+	for (const file of app.vault.getMarkdownFiles()) {
+		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+		if (!frontmatter) continue;
+		for (const item of asStringList(
+			readFrontmatterEntry(frontmatter, trimmed),
+		)) {
+			values.add(item);
+		}
+	}
+	return [...values].sort((a, b) =>
 		a.localeCompare(b, undefined, { sensitivity: 'base' }),
 	);
 }
@@ -58,7 +129,9 @@ export class TagInputSuggest extends AbstractInputSuggest<string> {
 	protected getSuggestions(query: string): string[] {
 		const needle = normalizeTagName(query).toLowerCase();
 		const excluded = new Set(
-			[...this.getExcluded()].map((t) => normalizeTagName(t).toLowerCase()),
+			[...this.getExcluded()].map((t) =>
+				normalizeTagName(t).toLowerCase(),
+			),
 		);
 		const tags = this.getTagCache().filter(
 			(tag) => !excluded.has(tag.toLowerCase()),
@@ -98,6 +171,78 @@ export class TagInputSuggest extends AbstractInputSuggest<string> {
 			this.tagCache = collectVaultTags(this.app);
 		}
 		return this.tagCache;
+	}
+}
+
+/**
+ * Suggest existing vault values for a list-type frontmatter property.
+ */
+export class ListValueSuggest extends AbstractInputSuggest<string> {
+	private readonly propertyKey: string;
+	private readonly getExcluded: () => Iterable<string>;
+	private readonly onChoose: (value: string) => void;
+	private valueCache: string[] | null = null;
+
+	constructor(
+		app: App,
+		inputEl: HTMLInputElement,
+		propertyKey: string,
+		getExcluded: () => Iterable<string>,
+		onChoose: (value: string) => void,
+	) {
+		super(app, inputEl);
+		this.propertyKey = propertyKey;
+		this.getExcluded = getExcluded;
+		this.onChoose = onChoose;
+		this.limit = 30;
+	}
+
+	protected getSuggestions(query: string): string[] {
+		const needle = query.trim().toLowerCase();
+		const excluded = new Set(
+			[...this.getExcluded()].map((item) => item.trim().toLowerCase()),
+		);
+		const values = this.getValueCache().filter(
+			(item) => !excluded.has(item.toLowerCase()),
+		);
+
+		if (!needle) {
+			return values.slice(0, this.limit || 30);
+		}
+
+		const fuzzy = prepareFuzzySearch(needle);
+		const scored: { value: string; score: number }[] = [];
+		for (const value of values) {
+			const result = fuzzy(value);
+			if (result) {
+				scored.push({ value, score: result.score });
+			} else if (value.toLowerCase().includes(needle)) {
+				scored.push({ value, score: -1 });
+			}
+		}
+		scored.sort((a, b) => b.score - a.score);
+		return scored.map((item) => item.value);
+	}
+
+	renderSuggestion(value: string, el: HTMLElement): void {
+		el.addClass('f2-rename-list-suggest-item');
+		el.createSpan({ text: value });
+	}
+
+	selectSuggestion(value: string, _evt: MouseEvent | KeyboardEvent): void {
+		this.onChoose(value);
+		this.setValue('');
+		this.close();
+	}
+
+	private getValueCache(): string[] {
+		if (!this.valueCache) {
+			this.valueCache = collectPropertyListValues(
+				this.app,
+				this.propertyKey,
+			);
+		}
+		return this.valueCache;
 	}
 }
 

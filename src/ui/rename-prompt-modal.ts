@@ -1,10 +1,12 @@
 import { App, Modal, Notice, setIcon } from 'obsidian';
 import type {
 	PropertyFieldState,
+	PropertyPanelItem,
 	PropertyValue,
 } from '../settings';
 import { PROPERTY_TYPE_OPTIONS } from '../settings';
 import {
+	ListValueSuggest,
 	TagInputSuggest,
 	normalizeTagName,
 	resolvePropertyTypeAttr,
@@ -35,8 +37,8 @@ export interface RenamePromptOptions {
 	 * Include the leading dot. Ignored in `url` mode.
 	 */
 	extension?: string;
-	/** Document properties shown under the collapsible “更多” section. */
-	properties?: PropertyFieldState[];
+	/** Document properties / separators shown under the collapsible “更多” section. */
+	properties?: PropertyPanelItem[];
 	/** Persist property edits immediately (default driven by settings). */
 	autoSaveProperties?: boolean;
 	/** Called when properties change and auto-save is enabled. */
@@ -77,8 +79,11 @@ export class RenamePromptModal extends Modal {
 		this.aliasValue = options.alias ?? '';
 		this.onSubmit = onSubmit;
 
-		for (const field of options.properties ?? []) {
-			this.propertyValues[field.key] = this.cloneValue(field.value);
+		for (const item of options.properties ?? []) {
+			if (item.kind !== 'field') continue;
+			this.propertyValues[item.field.key] = this.cloneValue(
+				item.field.value,
+			);
 		}
 	}
 
@@ -196,7 +201,7 @@ export class RenamePromptModal extends Modal {
 
 	private renderMoreSection(
 		parent: HTMLElement,
-		properties: PropertyFieldState[],
+		properties: PropertyPanelItem[],
 	): void {
 		const details = parent.createEl('details', {
 			cls: 'f2-rename-more',
@@ -213,8 +218,27 @@ export class RenamePromptModal extends Modal {
 		const panel = details.createDiv({ cls: 'f2-rename-more-body' });
 		const form = panel.createDiv({ cls: 'f2-rename-form' });
 
-		for (const field of properties) {
-			this.renderPropertyField(form, field);
+		for (const item of properties) {
+			if (item.kind === 'separator') {
+				this.renderPropertySeparator(form, item.label);
+				continue;
+			}
+			this.renderPropertyField(form, item.field);
+		}
+	}
+
+	private renderPropertySeparator(
+		parent: HTMLElement,
+		label?: string,
+	): void {
+		const row = parent.createDiv({ cls: 'f2-rename-prop-separator' });
+		row.createDiv({ cls: 'f2-rename-prop-separator-line' });
+		if (label?.trim()) {
+			row.createSpan({
+				text: label.trim(),
+				cls: 'f2-rename-prop-separator-label',
+			});
+			row.createDiv({ cls: 'f2-rename-prop-separator-line' });
 		}
 	}
 
@@ -328,7 +352,9 @@ export class RenamePromptModal extends Modal {
 				id: `f2-prop-${field.key}`,
 				spellcheck: 'false',
 				autocomplete: 'off',
-				...(field.hint ? { placeholder: field.hint } : {}),
+				...(field.showHint
+					? { placeholder: field.label }
+					: {}),
 			},
 		});
 		const current = this.propertyValues[field.key];
@@ -385,7 +411,9 @@ export class RenamePromptModal extends Modal {
 				id: `f2-prop-${field.key}`,
 				spellcheck: 'false',
 				autocomplete: 'off',
-				placeholder: field.hint || (isTags ? '添加标签' : '添加…'),
+				...(field.showHint
+					? { placeholder: field.label }
+					: {}),
 				...(isTags ? { 'data-property-type': 'tags' } : {}),
 			},
 		});
@@ -556,16 +584,29 @@ export class RenamePromptModal extends Modal {
 			addItemValue(input.value);
 		};
 
-		if (useTagSuggest) {
-			new TagInputSuggest(
-				this.app,
-				input,
-				() => getList(),
-				(tag) => {
-					suggestPicked = true;
-					addItemValue(tag);
-				},
-			);
+		if (field.showHint) {
+			if (useTagSuggest) {
+				new TagInputSuggest(
+					this.app,
+					input,
+					() => getList(),
+					(tag) => {
+						suggestPicked = true;
+						addItemValue(tag);
+					},
+				);
+			} else {
+				new ListValueSuggest(
+					this.app,
+					input,
+					field.key,
+					() => getList(),
+					(value) => {
+						suggestPicked = true;
+						addItemValue(value);
+					},
+				);
+			}
 		}
 
 		input.addEventListener('keydown', (evt) => {
