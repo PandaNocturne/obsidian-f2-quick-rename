@@ -1,9 +1,21 @@
 import { App, Modal, setIcon } from 'obsidian';
+import type {
+	PropertyFieldState,
+	PropertyValue,
+} from '../settings';
+import { PROPERTY_TYPE_OPTIONS } from '../settings';
+import {
+	TagInputSuggest,
+	normalizeTagName,
+	shouldSuggestTags,
+} from './tag-suggest';
 
 export interface RenamePromptResult {
 	name: string;
 	/** Present when the alias/title field was shown. */
 	alias?: string;
+	/** Frontmatter values keyed by property name. */
+	properties?: Record<string, PropertyValue>;
 }
 
 export interface RenamePromptOptions {
@@ -22,6 +34,8 @@ export interface RenamePromptOptions {
 	 * Include the leading dot. Ignored in `url` mode.
 	 */
 	extension?: string;
+	/** Document properties shown under the collapsible “更多” section. */
+	properties?: PropertyFieldState[];
 }
 
 /**
@@ -35,6 +49,7 @@ export class RenamePromptModal extends Modal {
 	private readonly onSubmit: (value: RenamePromptResult | null) => void;
 	private value: string;
 	private aliasValue: string;
+	private propertyValues: Record<string, PropertyValue> = {};
 	private resolved = false;
 	private inputEl: HTMLInputElement | null = null;
 	private aliasInputEl: HTMLInputElement | null = null;
@@ -53,6 +68,10 @@ export class RenamePromptModal extends Modal {
 		this.options = options;
 		this.aliasValue = options.alias ?? '';
 		this.onSubmit = onSubmit;
+
+		for (const field of options.properties ?? []) {
+			this.propertyValues[field.key] = this.cloneValue(field.value);
+		}
 	}
 
 	onOpen(): void {
@@ -96,26 +115,32 @@ export class RenamePromptModal extends Modal {
 				}
 			: null;
 
-		// URL links: 标题 then URL. Files: 文件名 then 别名.
 		if (isUrl && aliasField) {
-			this.aliasInputEl = this.createField(form, aliasField, (v) => {
+			this.aliasInputEl = this.createTextField(form, aliasField, (v) => {
 				this.aliasValue = v;
 			});
-			this.inputEl = this.createField(form, nameField, (v) => {
+			this.inputEl = this.createTextField(form, nameField, (v) => {
 				this.value = v;
 			});
 		} else {
-			this.inputEl = this.createField(form, nameField, (v) => {
+			this.inputEl = this.createTextField(form, nameField, (v) => {
 				this.value = v;
 			});
 			if (aliasField) {
-				this.aliasInputEl = this.createField(form, aliasField, (v) => {
-					this.aliasValue = v;
-				});
+				this.aliasInputEl = this.createTextField(
+					form,
+					aliasField,
+					(v) => {
+						this.aliasValue = v;
+					},
+				);
 			}
 		}
 
-		body.createDiv({ cls: 'f2-rename-options' });
+		const properties = this.options.properties ?? [];
+		if (properties.length > 0) {
+			this.renderMoreSection(body, properties);
+		}
 
 		const footer = contentEl.createDiv({ cls: 'f2-rename-footer' });
 		const cancelBtn = footer.createEl('button', {
@@ -155,7 +180,290 @@ export class RenamePromptModal extends Modal {
 		}
 	}
 
-	private createField(
+	private renderMoreSection(
+		parent: HTMLElement,
+		properties: PropertyFieldState[],
+	): void {
+		const details = parent.createEl('details', {
+			cls: 'f2-rename-more',
+		});
+		const summary = details.createEl('summary', {
+			cls: 'f2-rename-more-summary',
+		});
+		const summaryIcon = summary.createSpan({
+			cls: 'f2-rename-more-chevron',
+		});
+		setIcon(summaryIcon, 'chevron-right');
+		summary.createSpan({ text: '更多' });
+
+		const panel = details.createDiv({ cls: 'f2-rename-more-body' });
+		const form = panel.createDiv({ cls: 'f2-rename-form' });
+
+		for (const field of properties) {
+			this.renderPropertyField(form, field);
+		}
+	}
+
+	private renderPropertyField(
+		parent: HTMLElement,
+		field: PropertyFieldState,
+	): void {
+		const typeMeta = PROPERTY_TYPE_OPTIONS.find(
+			(o) => o.type === field.type,
+		);
+
+		switch (field.type) {
+			case 'checkbox':
+				this.renderCheckboxField(parent, field, typeMeta?.icon);
+				break;
+			case 'list':
+				this.renderListField(parent, field, typeMeta?.icon);
+				break;
+			case 'number':
+				this.renderNumberField(parent, field, typeMeta?.icon);
+				break;
+			case 'date':
+				this.renderInputProperty(
+					parent,
+					field,
+					'date',
+					typeMeta?.icon,
+				);
+				break;
+			case 'datetime':
+				this.renderInputProperty(
+					parent,
+					field,
+					'datetime-local',
+					typeMeta?.icon,
+				);
+				break;
+			case 'text':
+			default:
+				this.renderInputProperty(
+					parent,
+					field,
+					'text',
+					typeMeta?.icon,
+				);
+				break;
+		}
+	}
+
+	private renderCheckboxField(
+		parent: HTMLElement,
+		field: PropertyFieldState,
+		icon?: string,
+	): void {
+		const row = this.createPropertyRow(parent, field, icon);
+		const control = row.createDiv({ cls: 'f2-rename-control' });
+		const input = control.createEl('input', {
+			type: 'checkbox',
+			cls: 'f2-rename-checkbox',
+			attr: { id: `f2-prop-${field.key}` },
+		});
+		input.checked = Boolean(this.propertyValues[field.key]);
+		input.addEventListener('change', () => {
+			this.propertyValues[field.key] = input.checked;
+		});
+	}
+
+	private renderNumberField(
+		parent: HTMLElement,
+		field: PropertyFieldState,
+		icon?: string,
+	): void {
+		const row = this.createPropertyRow(parent, field, icon);
+		const control = row.createDiv({ cls: 'f2-rename-control' });
+		const input = control.createEl('input', {
+			type: 'number',
+			cls: 'f2-rename-input',
+			attr: {
+				id: `f2-prop-${field.key}`,
+				spellcheck: 'false',
+			},
+		});
+		const current = this.propertyValues[field.key];
+		input.value =
+			current === null || current === undefined ? '' : String(current);
+		input.addEventListener('input', () => {
+			const raw = input.value.trim();
+			this.propertyValues[field.key] =
+				raw === '' ? null : Number(raw);
+		});
+		this.bindEscape(input);
+	}
+
+	private renderInputProperty(
+		parent: HTMLElement,
+		field: PropertyFieldState,
+		inputType: string,
+		icon?: string,
+	): void {
+		const row = this.createPropertyRow(parent, field, icon);
+		const control = row.createDiv({ cls: 'f2-rename-control' });
+		const input = control.createEl('input', {
+			type: inputType,
+			cls: 'f2-rename-input',
+			attr: {
+				id: `f2-prop-${field.key}`,
+				spellcheck: 'false',
+				autocomplete: 'off',
+				...(field.hint ? { placeholder: field.hint } : {}),
+			},
+		});
+		const current = this.propertyValues[field.key];
+		let display = current == null ? '' : String(current);
+		if (field.type === 'datetime' && display) {
+			// datetime-local wants YYYY-MM-DDTHH:mm
+			display = display.replace(' ', 'T').slice(0, 16);
+		}
+		input.value = display;
+		input.addEventListener('input', () => {
+			this.propertyValues[field.key] = input.value;
+		});
+		this.bindEscape(input);
+	}
+
+	private renderListField(
+		parent: HTMLElement,
+		field: PropertyFieldState,
+		icon?: string,
+	): void {
+		const wrap = parent.createDiv({ cls: 'f2-rename-list-field' });
+
+		const head = wrap.createDiv({ cls: 'f2-rename-field f2-rename-list-head' });
+		const label = head.createEl('label', {
+			cls: 'f2-rename-label f2-rename-prop-label',
+			attr: { for: `f2-prop-${field.key}` },
+		});
+		const typeMeta = PROPERTY_TYPE_OPTIONS.find((o) => o.type === field.type);
+		const iconName = icon ?? typeMeta?.icon;
+		if (iconName) {
+			const iconEl = label.createSpan({ cls: 'f2-rename-prop-icon' });
+			setIcon(iconEl, iconName);
+		}
+		label.createSpan({ text: field.label });
+
+		const control = head.createDiv({ cls: 'f2-rename-control' });
+		const input = control.createEl('input', {
+			type: 'text',
+			cls: 'f2-rename-input f2-rename-list-input',
+			attr: {
+				id: `f2-prop-${field.key}`,
+				spellcheck: 'false',
+				autocomplete: 'off',
+				placeholder: field.hint || '添加…',
+			},
+		});
+
+		const chips = wrap.createDiv({ cls: 'f2-rename-list-chips' });
+
+		const useTagSuggest = shouldSuggestTags(field.key);
+		let suggestPicked = false;
+
+		const getList = (): string[] => {
+			const value = this.propertyValues[field.key];
+			return Array.isArray(value) ? [...value] : [];
+		};
+
+		const setList = (next: string[]): void => {
+			this.propertyValues[field.key] = next;
+			renderChips();
+		};
+
+		const renderChips = (): void => {
+			chips.empty();
+			for (const [index, item] of getList().entries()) {
+				const chip = chips.createSpan({ cls: 'f2-rename-chip' });
+				const text = useTagSuggest ? `#${normalizeTagName(item)}` : item;
+				chip.createSpan({ text, cls: 'f2-rename-chip-text' });
+				const remove = chip.createEl('button', {
+					cls: 'f2-rename-chip-remove',
+					attr: { type: 'button', 'aria-label': '移除' },
+				});
+				setIcon(remove, 'x');
+				remove.addEventListener('click', () => {
+					const list = getList();
+					list.splice(index, 1);
+					setList(list);
+				});
+			}
+		};
+
+		const addItemValue = (raw: string): void => {
+			const text = useTagSuggest
+				? normalizeTagName(raw)
+				: raw.trim();
+			if (!text) return;
+			const list = getList();
+			const exists = list.some(
+				(item) =>
+					item.toLowerCase() === text.toLowerCase() ||
+					normalizeTagName(item).toLowerCase() === text.toLowerCase(),
+			);
+			if (!exists) {
+				list.push(text);
+				setList(list);
+			}
+			input.value = '';
+		};
+
+		const addItem = (): void => {
+			addItemValue(input.value);
+		};
+
+		if (useTagSuggest) {
+			new TagInputSuggest(
+				this.app,
+				input,
+				() => getList(),
+				(tag) => {
+					suggestPicked = true;
+					addItemValue(tag);
+				},
+			);
+		}
+
+		input.addEventListener('keydown', (evt) => {
+			if (evt.key === 'Enter') {
+				evt.preventDefault();
+				evt.stopPropagation();
+				window.setTimeout(() => {
+					if (suggestPicked) {
+						suggestPicked = false;
+						return;
+					}
+					addItem();
+				}, 0);
+			} else if (evt.key === 'Escape') {
+				evt.preventDefault();
+				this.submit(null);
+			}
+		});
+
+		renderChips();
+	}
+
+	private createPropertyRow(
+		parent: HTMLElement,
+		field: PropertyFieldState,
+		icon?: string,
+	): HTMLElement {
+		const fieldEl = parent.createDiv({ cls: 'f2-rename-field' });
+		const label = fieldEl.createEl('label', {
+			cls: 'f2-rename-label f2-rename-prop-label',
+			attr: { for: `f2-prop-${field.key}` },
+		});
+		if (icon) {
+			const iconEl = label.createSpan({ cls: 'f2-rename-prop-icon' });
+			setIcon(iconEl, icon);
+		}
+		label.createSpan({ text: field.label });
+		return fieldEl;
+	}
+
+	private createTextField(
 		parent: HTMLElement,
 		opts: {
 			id: string;
@@ -207,10 +515,27 @@ export class RenamePromptModal extends Modal {
 		return input;
 	}
 
+	private bindEscape(input: HTMLInputElement): void {
+		input.addEventListener('keydown', (evt) => {
+			if (evt.key === 'Escape') {
+				evt.preventDefault();
+				this.submit(null);
+			}
+		});
+	}
+
+	private cloneValue(value: PropertyValue): PropertyValue {
+		if (Array.isArray(value)) return [...value];
+		return value;
+	}
+
 	private submitResult(): void {
 		const result: RenamePromptResult = { name: this.value };
 		if (this.options.showAlias || this.options.mode === 'url') {
 			result.alias = this.aliasValue;
+		}
+		if ((this.options.properties?.length ?? 0) > 0) {
+			result.properties = { ...this.propertyValues };
 		}
 		this.submit(result);
 	}

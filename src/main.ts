@@ -1,6 +1,10 @@
 import { Plugin } from 'obsidian';
 import { RenameService } from './rename-service';
-import { DEFAULT_SETTINGS, type F2RenameSettings } from './settings';
+import {
+	DEFAULT_PROPERTY_FIELDS,
+	DEFAULT_SETTINGS,
+	type F2RenameSettings,
+} from './settings';
 import { F2RenameSettingTab } from './ui/settings-tab';
 
 export default class F2RenamePlugin extends Plugin {
@@ -8,11 +12,13 @@ export default class F2RenamePlugin extends Plugin {
 	private renameService!: RenameService;
 
 	async onload() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<F2RenameSettings>,
-		);
+		const saved = (await this.loadData()) as Partial<F2RenameSettings> | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, saved);
+		if (!Array.isArray(this.settings.propertyFields)) {
+			this.settings.propertyFields = DEFAULT_PROPERTY_FIELDS.map((f) => ({
+				...f,
+			}));
+		}
 
 		this.renameService = new RenameService(this);
 

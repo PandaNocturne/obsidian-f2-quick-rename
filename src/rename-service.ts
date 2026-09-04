@@ -13,6 +13,11 @@ import {
 	resolveEmbedFile,
 	stripExcalidrawBasename,
 } from './utils/embed';
+import {
+	buildPropertyStates,
+	writePropertyValues,
+} from './utils/properties';
+import type { PropertyValue } from './settings';
 
 export class RenameService {
 	constructor(private readonly plugin: F2RenamePlugin) {}
@@ -135,6 +140,7 @@ export class RenameService {
 		const { settings } = this.plugin;
 		const showAlias = settings.editEmbedAlias;
 		const excalidraw = target ? isExcalidrawFile(target) : false;
+		const canEditProperties = this.canEditProperties(target);
 
 		let displayBase: string;
 		if (target) {
@@ -149,6 +155,11 @@ export class RenameService {
 			? this.describeFileKind(target, true, excalidraw)
 			: '🗳重命名嵌入链接';
 
+		const properties =
+			canEditProperties && target
+				? buildPropertyStates(this.app, target, settings.propertyFields)
+				: undefined;
+
 		const result = await promptRename(this.app, kindLabel, displayBase, {
 			mode: 'file',
 			showAlias,
@@ -158,6 +169,7 @@ export class RenameService {
 				excalidraw,
 				embed.linkpath,
 			),
+			properties,
 		});
 		if (result === null) return;
 
@@ -200,7 +212,13 @@ export class RenameService {
 				: `${newBase}.${target.extension}`,
 		);
 
-		if (newPath === target.path) return;
+		const nameChanged = newPath !== target.path;
+
+		if (result.properties && canEditProperties) {
+			await this.applyProperties(target, result.properties);
+		}
+
+		if (!nameChanged) return;
 
 		await this.applyFileRename(target, newBase, newPath, parentPath);
 	}
@@ -209,14 +227,21 @@ export class RenameService {
 		target: TFile,
 		isEmbed: boolean,
 	): Promise<void> {
+		const { settings } = this.plugin;
 		const excalidraw = isExcalidrawFile(target);
 		const displayBase = excalidraw
 			? stripExcalidrawBasename(target.basename)
 			: target.basename;
 
+		const canEditProperties = this.canEditProperties(target);
+		const properties = canEditProperties
+			? buildPropertyStates(this.app, target, settings.propertyFields)
+			: undefined;
+
 		const kindLabel = this.describeFileKind(target, isEmbed, excalidraw);
 		const result = await promptRename(this.app, kindLabel, displayBase, {
 			extension: displayExtensionSuffix(target, excalidraw),
+			properties,
 		});
 		if (result === null) return;
 
@@ -234,14 +259,48 @@ export class RenameService {
 				: `${newBase}.${target.extension}`,
 		);
 
-		if (newPath === target.path) return;
+		const nameChanged = newPath !== target.path;
 
-		const { settings } = this.plugin;
+		if (result.properties && canEditProperties) {
+			await this.applyProperties(target, result.properties);
+		}
+
+		if (!nameChanged) return;
+
 		if (!isEmbed && settings.copyNameToClipboard) {
 			await navigator.clipboard.writeText(newBase).catch(() => undefined);
 		}
 
 		await this.applyFileRename(target, newBase, newPath, parentPath);
+	}
+
+	/** Markdown notes whose frontmatter can be edited in the rename panel. */
+	private canEditProperties(file: TFile | null): boolean {
+		const { settings } = this.plugin;
+		return Boolean(
+			file &&
+				settings.editProperties &&
+				file.extension === 'md' &&
+				settings.propertyFields.length > 0,
+		);
+	}
+
+	private async applyProperties(
+		file: TFile,
+		values: Record<string, PropertyValue>,
+	): Promise<void> {
+		try {
+			await writePropertyValues(
+				this.app,
+				file,
+				this.plugin.settings.propertyFields,
+				values,
+			);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			new Notice(`写入属性失败: ${message}`);
+		}
 	}
 
 	private async applyFileRename(

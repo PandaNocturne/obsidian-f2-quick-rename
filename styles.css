@@ -71,7 +71,7 @@
 	font-weight: var(--font-medium);
 	color: var(--text-muted);
 	letter-spacing: 0.01em;
-	text-align: right;
+	text-align: left;
 	line-height: 1.2;
 }
 
@@ -136,6 +136,175 @@
 	gap: 0.65rem;
 	padding-top: 0.15rem;
 	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Collapsible document properties */
+.f2-rename-more {
+	border-top: 1px solid var(--background-modifier-border);
+	padding-top: 0.35rem;
+}
+
+.f2-rename-more-summary {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	cursor: pointer;
+	list-style: none;
+	user-select: none;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	padding: 0.35rem 0;
+}
+
+.f2-rename-more-summary::-webkit-details-marker {
+	display: none;
+}
+
+.f2-rename-more-chevron {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: transform 0.12s ease;
+}
+
+.f2-rename-more-chevron svg {
+	width: 0.9rem;
+	height: 0.9rem;
+}
+
+.f2-rename-more[open] .f2-rename-more-chevron {
+	transform: rotate(90deg);
+}
+
+.f2-rename-more-body {
+	padding: 0.5rem 0 0.15rem;
+}
+
+.f2-rename-prop-label {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 0.3rem;
+}
+
+.f2-rename-prop-icon {
+	display: inline-flex;
+	opacity: 0.7;
+}
+
+.f2-rename-prop-icon svg {
+	width: 0.85rem;
+	height: 0.85rem;
+}
+
+.f2-rename-checkbox {
+	margin: 0;
+	width: 1.1rem;
+	height: 1.1rem;
+}
+
+/* List property: label+input on one row; chips below the input */
+.f2-rename-list-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	width: 100%;
+}
+
+.f2-rename-list-head {
+	align-items: center;
+}
+
+.f2-rename-list-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	/* Align under the input (after the label column) */
+	margin-left: calc(4rem + 0.75rem);
+}
+
+.f2-rename-list-chips:empty {
+	display: none;
+}
+
+.f2-rename-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
+	max-width: 100%;
+	padding: 0.15rem 0.25rem 0.15rem 0.5rem;
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+}
+
+.f2-rename-chip-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.f2-rename-chip-remove,
+.f2-rename-chip-remove:hover,
+.f2-rename-chip-remove:active,
+.f2-rename-chip-remove:focus,
+.f2-rename-chip-remove:focus-visible {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: 0.1rem;
+	border: none;
+	border-radius: 0;
+	background: transparent !important;
+	box-shadow: none !important;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.f2-rename-chip-remove:hover {
+	color: var(--text-normal);
+}
+
+.f2-rename-chip-remove svg {
+	width: 0.75rem;
+	height: 0.75rem;
+}
+
+.f2-rename-list-input {
+	width: 100%;
+}
+
+.f2-rename-tag-suggest-item {
+	font-family: var(--font-interface);
+}
+
+/* Settings: property field rows */
+.f2-rename-setting-property .setting-item-control {
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+.f2-rename-setting-key {
+	width: 8rem;
+}
+
+.f2-rename-setting-meta {
+	width: 9rem;
+}
+
+.f2-rename-setting-type-icon {
+	display: inline-flex;
+	margin-right: 0.35rem;
+	vertical-align: middle;
+	opacity: 0.75;
+}
+
+.f2-rename-setting-type-icon svg {
+	width: 0.95rem;
+	height: 0.95rem;
 }
 
 .f2-rename-footer {

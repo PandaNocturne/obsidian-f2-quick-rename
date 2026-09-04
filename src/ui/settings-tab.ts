@@ -1,6 +1,12 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, setIcon } from 'obsidian';
 import type F2RenamePlugin from '../main';
-import type { F2RenameSettings } from '../settings';
+import {
+	DEFAULT_PROPERTY_FIELDS,
+	PROPERTY_TYPE_OPTIONS,
+	type F2RenameSettings,
+	type PropertyFieldConfig,
+	type PropertyFieldType,
+} from '../settings';
 
 type ToggleKey = {
 	[K in keyof F2RenameSettings]: F2RenameSettings[K] extends boolean
@@ -40,6 +46,11 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 		name: '复制新名称到剪贴板',
 		desc: '重命名当前打开的笔记后，将新主文件名写入剪贴板（重命名嵌入时不复制）。',
 	},
+	{
+		key: 'editProperties',
+		name: '编辑文档属性',
+		desc: '重命名当前笔记或可识别的嵌入 Markdown 文档时，在「更多」中编辑配置的 frontmatter 属性。',
+	},
 ];
 
 export class F2RenameSettingTab extends PluginSettingTab {
@@ -74,5 +85,112 @@ export class F2RenameSettingTab extends PluginSettingTab {
 						}),
 				);
 		}
+
+		this.renderPropertyFieldsSection(containerEl);
+	}
+
+	private renderPropertyFieldsSection(containerEl: HTMLElement): void {
+		new Setting(containerEl).setName('文档属性').setHeading();
+
+		containerEl.createEl('p', {
+			text: '配置重命名面板「更多」中可编辑的属性。类型与 Obsidian 属性类型一致。',
+			cls: 'setting-item-description',
+		});
+
+		const fields = this.plugin.settings.propertyFields;
+
+		fields.forEach((field, index) => {
+			const row = new Setting(containerEl);
+			row.settingEl.addClass('f2-rename-setting-property');
+
+			row.addText((text) => {
+				text.setPlaceholder('属性名，如 title')
+					.setValue(field.key)
+					.onChange(async (value) => {
+						field.key = value.trim();
+						if (!field.label || field.label === field.key) {
+							// keep label in sync when it was mirroring key
+						}
+						await this.plugin.saveSettings();
+					});
+				text.inputEl.addClass('f2-rename-setting-key');
+			});
+
+			row.addDropdown((dropdown) => {
+				for (const opt of PROPERTY_TYPE_OPTIONS) {
+					dropdown.addOption(opt.type, opt.label);
+				}
+				dropdown.setValue(field.type).onChange(async (value) => {
+					field.type = value as PropertyFieldType;
+					await this.plugin.saveSettings();
+					this.display();
+				});
+			});
+
+			row.addText((text) => {
+				text
+					.setPlaceholder(
+						field.type === 'list' ? '添加提示，如 添加标签' : '显示名（可选）',
+					)
+					.setValue(
+						field.type === 'list'
+							? (field.hint ?? '')
+							: (field.label ?? ''),
+					)
+					.onChange(async (value) => {
+						if (field.type === 'list') {
+							field.hint = value;
+						} else {
+							field.label = value;
+						}
+						await this.plugin.saveSettings();
+					});
+				text.inputEl.addClass('f2-rename-setting-meta');
+			});
+
+			row.addExtraButton((btn) => {
+				btn.setIcon('trash-2')
+					.setTooltip('移除')
+					.onClick(async () => {
+						this.plugin.settings.propertyFields.splice(index, 1);
+						await this.plugin.saveSettings();
+						this.display();
+					});
+			});
+
+			const typeOpt = PROPERTY_TYPE_OPTIONS.find(
+				(o) => o.type === field.type,
+			);
+			if (typeOpt) {
+				const iconEl = row.nameEl.createSpan({
+					cls: 'f2-rename-setting-type-icon',
+				});
+				setIcon(iconEl, typeOpt.icon);
+				row.setName(typeOpt.label);
+			}
+		});
+
+		new Setting(containerEl)
+			.addButton((btn) =>
+				btn.setButtonText('添加属性').onClick(async () => {
+					const next: PropertyFieldConfig = {
+						key: '',
+						type: 'text',
+						label: '',
+						hint: '',
+					};
+					this.plugin.settings.propertyFields.push(next);
+					await this.plugin.saveSettings();
+					this.display();
+				}),
+			)
+			.addButton((btn) =>
+				btn.setButtonText('恢复默认').onClick(async () => {
+					this.plugin.settings.propertyFields =
+						DEFAULT_PROPERTY_FIELDS.map((f) => ({ ...f }));
+					await this.plugin.saveSettings();
+					this.display();
+				}),
+			);
 	}
 }
