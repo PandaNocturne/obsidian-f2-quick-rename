@@ -21,6 +21,11 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 		desc: '光标落在 wiki / Markdown 嵌入上时，重命名被嵌入的文件，而不是当前笔记。',
 	},
 	{
+		key: 'editEmbedAlias',
+		name: '编辑嵌入别名',
+		desc: '重命名嵌入时显示别名字段，可修改 ![[文件|别名]] 或 ![别名](文件) 的显示名。',
+	},
+	{
 		key: 'renameHeadings',
 		name: '重命名标题',
 		desc: '选中或光标所在行为标题时，调用 Obsidian 自带的「重命名标题」。',

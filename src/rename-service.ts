@@ -2,9 +2,12 @@ import { App, Editor, Notice, TFile, normalizePath } from 'obsidian';
 import type F2RenamePlugin from './main';
 import { promptRename } from './ui/rename-prompt-modal';
 import {
+	type EmbedMatch,
 	isExcalidrawFile,
+	linkpathDisplayBase,
 	matchSelectionEmbed,
 	normalizeSpaces,
+	rebuildEmbedWithAlias,
 	resolveEmbedFile,
 	stripExcalidrawBasename,
 } from './utils/embed';
@@ -32,7 +35,6 @@ export class RenameService {
 				/^#+\s/.test(selection.trim()) &&
 				editor
 			) {
-				// `commands` exists at runtime; not always typed on App
 				(
 					this.app as App & {
 						commands: { executeCommandById: (id: string) => boolean };
@@ -49,11 +51,8 @@ export class RenameService {
 						embed.linkpath,
 						file.path,
 					);
-					if (target) {
-						await this.renameTargetFile(target, true);
-						return;
-					}
-					new Notice(`❌未找到文件: ${embed.linkpath}`);
+					await this.renameEmbed(target, embed, editor);
+					return;
 				}
 			}
 		}
@@ -85,21 +84,61 @@ export class RenameService {
 		return { selection, editor };
 	}
 
-	private async renameTargetFile(
-		target: TFile,
-		isEmbed: boolean,
+	private async renameEmbed(
+		target: TFile | null,
+		embed: EmbedMatch,
+		editor: Editor | null,
 	): Promise<void> {
 		const { settings } = this.plugin;
-		const excalidraw = isExcalidrawFile(target);
-		const displayBase = excalidraw
-			? stripExcalidrawBasename(target.basename)
-			: target.basename;
+		const showAlias = settings.editEmbedAlias;
+		const excalidraw = target ? isExcalidrawFile(target) : false;
 
-		const kindLabel = this.describeFileKind(target, isEmbed, excalidraw);
-		let newBase = await promptRename(this.app, kindLabel, displayBase);
-		if (newBase === null) return;
+		let displayBase: string;
+		if (target) {
+			displayBase = excalidraw
+				? stripExcalidrawBasename(target.basename)
+				: target.basename;
+		} else {
+			displayBase = linkpathDisplayBase(embed.linkpath);
+		}
 
-		newBase = normalizeSpaces(newBase);
+		const kindLabel = target
+			? this.describeFileKind(target, true, excalidraw)
+			: '🗳重命名嵌入链接';
+
+		const result = await promptRename(this.app, kindLabel, displayBase, {
+			showAlias,
+			alias: embed.alias ?? '',
+		});
+		if (result === null) return;
+
+		let newBase = normalizeSpaces(result.name);
+		const newAlias = showAlias
+			? normalizeSpaces(result.alias ?? '')
+			: null;
+
+		const aliasChanged =
+			showAlias &&
+			newAlias !== null &&
+			newAlias !== (embed.alias ?? '').trim();
+
+		if (aliasChanged && editor) {
+			const rebuilt = rebuildEmbedWithAlias(
+				embed,
+				newAlias.length > 0 ? newAlias : null,
+			);
+			this.replaceEmbedText(editor, embed.raw, rebuilt);
+		} else if (aliasChanged && !editor) {
+			new Notice('无法编辑别名：当前没有可用的编辑器');
+		}
+
+		if (!target) {
+			if (!aliasChanged) {
+				new Notice(`❌未找到文件: ${embed.linkpath}`);
+			}
+			return;
+		}
+
 		if (!newBase) return;
 
 		if (excalidraw) {
@@ -115,13 +154,56 @@ export class RenameService {
 
 		if (newPath === target.path) return;
 
-		const companions = settings.renameCompanions
-			? this.findCompanions(target)
-			: [];
+		await this.applyFileRename(target, newBase, newPath, parentPath);
+	}
 
+	private async renameTargetFile(
+		target: TFile,
+		isEmbed: boolean,
+	): Promise<void> {
+		const excalidraw = isExcalidrawFile(target);
+		const displayBase = excalidraw
+			? stripExcalidrawBasename(target.basename)
+			: target.basename;
+
+		const kindLabel = this.describeFileKind(target, isEmbed, excalidraw);
+		const result = await promptRename(this.app, kindLabel, displayBase);
+		if (result === null) return;
+
+		let newBase = normalizeSpaces(result.name);
+		if (!newBase) return;
+
+		if (excalidraw) {
+			newBase = `${newBase}.excalidraw`;
+		}
+
+		const parentPath = target.parent?.path ?? '';
+		const newPath = normalizePath(
+			parentPath
+				? `${parentPath}/${newBase}.${target.extension}`
+				: `${newBase}.${target.extension}`,
+		);
+
+		if (newPath === target.path) return;
+
+		const { settings } = this.plugin;
 		if (!isEmbed && settings.copyNameToClipboard) {
 			await navigator.clipboard.writeText(newBase).catch(() => undefined);
 		}
+
+		await this.applyFileRename(target, newBase, newPath, parentPath);
+	}
+
+	private async applyFileRename(
+		target: TFile,
+		newBase: string,
+		newPath: string,
+		parentPath: string,
+	): Promise<void> {
+		const { settings } = this.plugin;
+		const companions = settings.renameCompanions
+			? this.findCompanions(target)
+			: [];
 
 		await this.app.fileManager.renameFile(target, newPath);
 
@@ -141,6 +223,39 @@ export class RenameService {
 				new Notice(`连带重命名失败: ${companion.name}`);
 			}
 		}
+	}
+
+	/**
+	 * Replace the first occurrence of `raw` on the cursor line (or in the
+	 * current selection when the selection itself contains the embed).
+	 */
+	private replaceEmbedText(
+		editor: Editor,
+		raw: string,
+		next: string,
+	): void {
+		if (raw === next) return;
+
+		const selected = editor.getSelection();
+		if (selected && selected.includes(raw)) {
+			const from = editor.getCursor('from');
+			const to = editor.getCursor('to');
+			editor.replaceRange(selected.replace(raw, next), from, to);
+			return;
+		}
+
+		const lineNo = editor.getCursor().line;
+		const line = editor.getLine(lineNo);
+		const at = line.indexOf(raw);
+		if (at < 0) {
+			new Notice('未能在编辑器中定位嵌入链接');
+			return;
+		}
+		editor.replaceRange(
+			next,
+			{ line: lineNo, ch: at },
+			{ line: lineNo, ch: at + raw.length },
+		);
 	}
 
 	private describeFileKind(

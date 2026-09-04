@@ -1,5 +1,19 @@
 import { App, Modal, setIcon } from 'obsidian';
 
+export interface RenamePromptResult {
+	name: string;
+	/** Present when the alias field was shown. */
+	alias?: string;
+}
+
+export interface RenamePromptOptions {
+	/** Show and prefill the alias field (embed links). */
+	showAlias?: boolean;
+	alias?: string | null;
+	nameLabel?: string;
+	aliasLabel?: string;
+}
+
 /**
  * Rename panel. Layout is sectioned so options / extras can be added later
  * without reshaping the header, field, or footer.
@@ -7,21 +21,27 @@ import { App, Modal, setIcon } from 'obsidian';
 export class RenamePromptModal extends Modal {
 	private readonly titleText: string;
 	private readonly defaultValue: string;
-	private readonly onSubmit: (value: string | null) => void;
+	private readonly options: RenamePromptOptions;
+	private readonly onSubmit: (value: RenamePromptResult | null) => void;
 	private value: string;
+	private aliasValue: string;
 	private resolved = false;
 	private inputEl: HTMLInputElement | null = null;
+	private aliasInputEl: HTMLInputElement | null = null;
 
 	constructor(
 		app: App,
 		titleText: string,
 		defaultValue: string,
-		onSubmit: (value: string | null) => void,
+		onSubmit: (value: RenamePromptResult | null) => void,
+		options: RenamePromptOptions = {},
 	) {
 		super(app);
 		this.titleText = titleText;
 		this.defaultValue = defaultValue;
 		this.value = defaultValue;
+		this.options = options;
+		this.aliasValue = options.alias ?? '';
 		this.onSubmit = onSubmit;
 	}
 
@@ -40,38 +60,33 @@ export class RenamePromptModal extends Modal {
 
 		const body = contentEl.createDiv({ cls: 'f2-rename-body' });
 
-		const field = body.createDiv({ cls: 'f2-rename-field' });
-		field.createEl('label', {
-			text: '新名称',
-			cls: 'f2-rename-label',
-			attr: { for: 'f2-rename-input' },
-		});
-
-		this.inputEl = field.createEl('input', {
-			type: 'text',
-			cls: 'f2-rename-input',
-			attr: {
+		this.inputEl = this.createField(
+			body,
+			{
 				id: 'f2-rename-input',
-				spellcheck: 'false',
-				autocomplete: 'off',
-				'aria-label': '新名称',
+				label: this.options.nameLabel ?? '新名称',
+				value: this.defaultValue,
 			},
-		});
-		this.inputEl.value = this.defaultValue;
-		this.inputEl.addEventListener('input', () => {
-			this.value = this.inputEl?.value ?? '';
-		});
-		this.inputEl.addEventListener('keydown', (evt) => {
-			if (evt.key === 'Enter') {
-				evt.preventDefault();
-				this.submit(this.value);
-			} else if (evt.key === 'Escape') {
-				evt.preventDefault();
-				this.submit(null);
-			}
-		});
+			(v) => {
+				this.value = v;
+			},
+		);
 
-		// Reserved for future controls (e.g. update links, companions).
+		if (this.options.showAlias) {
+			this.aliasInputEl = this.createField(
+				body,
+				{
+					id: 'f2-rename-alias-input',
+					label: this.options.aliasLabel ?? '别名',
+					value: this.aliasValue,
+					placeholder: '可选，对应 | 后的显示名',
+				},
+				(v) => {
+					this.aliasValue = v;
+				},
+			);
+		}
+
 		body.createDiv({ cls: 'f2-rename-options' });
 
 		const footer = contentEl.createDiv({ cls: 'f2-rename-footer' });
@@ -85,11 +100,15 @@ export class RenamePromptModal extends Modal {
 			text: '重命名',
 			cls: 'f2-rename-btn f2-rename-btn-primary mod-cta',
 		});
-		confirmBtn.addEventListener('click', () => this.submit(this.value));
+		confirmBtn.addEventListener('click', () => this.submitResult());
 
 		window.setTimeout(() => {
-			this.inputEl?.focus();
-			this.inputEl?.select();
+			const focusEl =
+				this.options.showAlias && this.aliasValue
+					? (this.aliasInputEl ?? this.inputEl)
+					: this.inputEl;
+			focusEl?.focus();
+			focusEl?.select();
 		}, 50);
 	}
 
@@ -97,13 +116,64 @@ export class RenamePromptModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.inputEl = null;
+		this.aliasInputEl = null;
 		if (!this.resolved) {
 			this.resolved = true;
 			this.onSubmit(null);
 		}
 	}
 
-	private submit(value: string | null): void {
+	private createField(
+		parent: HTMLElement,
+		opts: {
+			id: string;
+			label: string;
+			value: string;
+			placeholder?: string;
+		},
+		onInput: (value: string) => void,
+	): HTMLInputElement {
+		const field = parent.createDiv({ cls: 'f2-rename-field' });
+		field.createEl('label', {
+			text: opts.label,
+			cls: 'f2-rename-label',
+			attr: { for: opts.id },
+		});
+
+		const input = field.createEl('input', {
+			type: 'text',
+			cls: 'f2-rename-input',
+			attr: {
+				id: opts.id,
+				spellcheck: 'false',
+				autocomplete: 'off',
+				'aria-label': opts.label,
+				...(opts.placeholder ? { placeholder: opts.placeholder } : {}),
+			},
+		});
+		input.value = opts.value;
+		input.addEventListener('input', () => onInput(input.value));
+		input.addEventListener('keydown', (evt) => {
+			if (evt.key === 'Enter') {
+				evt.preventDefault();
+				this.submitResult();
+			} else if (evt.key === 'Escape') {
+				evt.preventDefault();
+				this.submit(null);
+			}
+		});
+		return input;
+	}
+
+	private submitResult(): void {
+		const result: RenamePromptResult = { name: this.value };
+		if (this.options.showAlias) {
+			result.alias = this.aliasValue;
+		}
+		this.submit(result);
+	}
+
+	private submit(value: RenamePromptResult | null): void {
 		if (this.resolved) return;
 		this.resolved = true;
 		this.close();
@@ -115,8 +185,15 @@ export function promptRename(
 	app: App,
 	title: string,
 	defaultValue: string,
-): Promise<string | null> {
+	options: RenamePromptOptions = {},
+): Promise<RenamePromptResult | null> {
 	return new Promise((resolve) => {
-		new RenamePromptModal(app, title, defaultValue, resolve).open();
+		new RenamePromptModal(
+			app,
+			title,
+			defaultValue,
+			resolve,
+			options,
+		).open();
 	});
 }
