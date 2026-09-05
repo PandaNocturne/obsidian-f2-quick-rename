@@ -1,4 +1,11 @@
-import { App, Editor, Notice, TFile, normalizePath } from 'obsidian';
+import {
+	App,
+	Editor,
+	MarkdownView,
+	Notice,
+	TFile,
+	normalizePath,
+} from 'obsidian';
 import { t } from './i18n';
 import type F2RenamePlugin from './main';
 import { promptRename } from './ui/rename-prompt-modal';
@@ -49,7 +56,16 @@ export class RenameService {
 			return;
 		}
 
-		const { selection, editor, editorFile } = this.getSelection();
+		const { selection, hasExplicitSelection, editor, editorFile } =
+			this.getSelection();
+
+		// Reading (preview) mode: only honor an explicit selection for
+		// heading / embed / link. Otherwise rename the current note.
+		const readingMode = this.isMarkdownReadingMode();
+		if (readingMode && !hasExplicitSelection) {
+			await this.renameTargetFile(file, false);
+			return;
+		}
 
 		if (selection) {
 			if (
@@ -65,13 +81,13 @@ export class RenameService {
 				return;
 			}
 
-			// Only treat wiki/markdown embeds when the selection comes from the
-			// same note as the command target (not a nested embed editor).
+			// Prefer embeds/links from the same note. Allow an explicit
+			// selection in Reading mode even when no CM editor is focused.
+			const sameNote = !editorFile || editorFile.path === file.path;
 			if (
 				settings.renameEmbeds &&
-				editor &&
-				editorFile &&
-				editorFile.path === file.path
+				sameNote &&
+				(editor || hasExplicitSelection)
 			) {
 				const embed = matchSelectionEmbed(selection);
 				if (embed) {
@@ -88,6 +104,9 @@ export class RenameService {
 					return;
 				}
 			}
+
+			// Reading mode with a selection that is not heading/embed/link:
+			// fall through to renaming the current note.
 		}
 
 		await this.renameTargetFile(file, false);
@@ -153,14 +172,24 @@ export class RenameService {
 		);
 	}
 
+	/** True when the active markdown leaf is in Reading (preview) mode. */
+	private isMarkdownReadingMode(): boolean {
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		return view?.getMode() === 'preview';
+	}
+
 	private getSelection(): {
 		selection: string;
+		/** True when the user selected text (not the current-line fallback). */
+		hasExplicitSelection: boolean;
 		editor: Editor | null;
 		editorFile: TFile | null;
 	} {
 		let selection = '';
+		let hasExplicitSelection = false;
 		let editor: Editor | null = null;
 		let editorFile: TFile | null = null;
+		const readingMode = this.isMarkdownReadingMode();
 
 		const activeEditor = this.app.workspace.activeEditor;
 		if (activeEditor?.file instanceof TFile) {
@@ -170,19 +199,27 @@ export class RenameService {
 			editor = activeEditor.editor;
 			try {
 				const selected = editor.getSelection();
-				selection = selected
-					? selected
-					: editor.getLine(editor.getCursor().line);
+				if (selected) {
+					selection = selected;
+					hasExplicitSelection = true;
+				} else if (!readingMode) {
+					// Edit / Live Preview: use the line under the cursor.
+					selection = editor.getLine(editor.getCursor().line);
+				}
 			} catch {
 				// Editor may be unavailable in some views
 			}
 		}
 
 		if (!selection) {
-			selection = window.getSelection()?.toString() ?? '';
+			const winSel = window.getSelection()?.toString() ?? '';
+			if (winSel) {
+				selection = winSel;
+				hasExplicitSelection = true;
+			}
 		}
 
-		return { selection, editor, editorFile };
+		return { selection, hasExplicitSelection, editor, editorFile };
 	}
 
 	private modalSizeOptions(): {
