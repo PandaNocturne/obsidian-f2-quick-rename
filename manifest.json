@@ -1,7 +1,7 @@
 {
 	"id": "f2-quick-rename",
 	"name": "F2 Quick Rename",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.8.7",
 	"description": "F2 to quick rename the current note, or an embedded note/image under the cursor (including wiki aliases and markdown image alt text).",
 	"author": "PandaNocturne",
