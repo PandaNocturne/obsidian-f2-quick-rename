@@ -7,13 +7,13 @@ import type {
 } from '../settings';
 import { PROPERTY_TYPE_OPTIONS } from '../settings';
 import {
+	appendClassifiedChipPrefix,
 	classifyValue,
 	copyTextToClipboard,
 	fileToWikilink,
 	openClassifiedValue,
 	openRelatedFile,
 	revealFileInSystemFolder,
-	type ClassifiedValue,
 } from '../utils/value-links';
 import {
 	renameFileKindIcon,
@@ -833,43 +833,10 @@ export class RenamePromptModal extends Modal {
 					},
 				});
 
-				const prefix = chip.createSpan({
-					cls:
-						classified.kind === 'text'
-							? 'f2-rename-chip-prefix'
-							: 'f2-rename-chip-prefix is-action',
-					attr:
-						classified.kind === 'text'
-							? undefined
-							: {
-									role: 'button',
-									tabindex: '0',
-									title: chipActionTitle(classified),
-									'aria-label': chipActionTitle(classified),
-								},
+				const prefix = appendClassifiedChipPrefix(chip, classified, {
+					app: this.app,
+					sourcePath,
 				});
-				setIcon(prefix, classified.icon);
-				if (classified.kind !== 'text') {
-					const openValue = (evt: Event): void => {
-						evt.preventDefault();
-						evt.stopPropagation();
-						void openClassifiedValue(
-							this.app,
-							classified,
-							sourcePath,
-						);
-					};
-					prefix.addEventListener('click', openValue);
-					prefix.addEventListener('keydown', (evt: KeyboardEvent) => {
-						if (evt.key === 'Enter' || evt.key === ' ') {
-							openValue(evt);
-						}
-					});
-					prefix.addEventListener('dblclick', (evt) => {
-						evt.preventDefault();
-						evt.stopPropagation();
-					});
-				}
 
 				const textEl = chip.createSpan({
 					cls: 'f2-rename-chip-text',
@@ -1340,20 +1307,6 @@ export function promptRename(
 	});
 }
 
-function chipActionTitle(value: ClassifiedValue): string {
-	switch (value.kind) {
-		case 'tag':
-			return t('tooltip.openTagSearch');
-		case 'url':
-			return t('tooltip.openLink');
-		case 'document':
-			return t('tooltip.openFile');
-		default:
-			return '';
-	}
-}
-
-/** Ensure extension starts with a dot when non-empty. */
 function normalizeExtensionSuffix(raw: string): string {
 	const trimmed = raw.trim();
 	if (!trimmed) return '';

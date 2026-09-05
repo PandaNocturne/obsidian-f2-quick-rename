@@ -13,6 +13,10 @@ import {
 	readPropertyValue,
 } from '../utils/properties';
 import {
+	appendClassifiedChipPrefix,
+	classifyValue,
+} from '../utils/value-links';
+import {
 	ListValueSuggest,
 	PropertyKeySuggest,
 	TagInputSuggest,
@@ -430,7 +434,7 @@ export class FullPropertiesPanel {
 		const wrap = host.createDiv({
 			cls: 'f2-full-props-list-editor',
 			attr: {
-				'data-property-type': field.key,
+				'data-property-type': propertyType,
 				'data-property-key': field.key,
 			},
 		});
@@ -462,18 +466,40 @@ export class FullPropertiesPanel {
 
 		const renderChips = (): void => {
 			chips.empty();
+			const sourcePath = this.sourcePath;
 			for (const [chipIndex, item] of getList().entries()) {
+				const classified = classifyValue(this.app, item, {
+					forceTag: useTagSuggest,
+					sourcePath,
+				});
 				const chip = chips.createSpan({
-					cls: 'f2-rename-chip',
+					cls: [
+						'f2-rename-chip',
+						classified.kind !== 'text'
+							? `is-${classified.kind}`
+							: '',
+					]
+						.filter(Boolean)
+						.join(' '),
 					attr: {
-						title: t('tooltip.doubleClickToEdit'),
-						'data-property-type': field.key,
+						title:
+							classified.kind === 'text'
+								? t('tooltip.doubleClickToEdit')
+								: t('tooltip.clickIconOpenDoubleClickEdit'),
+						'data-property-type': propertyType,
+						'data-value-kind': classified.kind,
 					},
 				});
+
+				const prefix = appendClassifiedChipPrefix(chip, classified, {
+					app: this.app,
+					sourcePath,
+				});
+
 				const textEl = chip.createSpan({
 					cls: 'f2-rename-chip-text',
 				});
-				textEl.setText(item);
+				textEl.setText(classified.display);
 
 				const remove = chip.createEl('button', {
 					cls: 'f2-rename-chip-remove',
@@ -496,11 +522,12 @@ export class FullPropertiesPanel {
 					chip.addClass('is-editing');
 					chip.removeAttribute('title');
 					remove.hide();
+					prefix.hide();
 
 					textEl.setAttr('contenteditable', 'true');
 					textEl.setAttr('spellcheck', 'false');
 					textEl.setAttr('role', 'textbox');
-					textEl.setText(item);
+					textEl.setText(classified.display);
 
 					let closed = false;
 					const finish = (action: () => void): void => {

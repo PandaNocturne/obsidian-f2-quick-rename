@@ -1,4 +1,5 @@
-import { App, FileSystemAdapter, TFile } from 'obsidian';
+import { App, FileSystemAdapter, TFile, setIcon } from 'obsidian';
+import { t } from '../i18n';
 import { normalizeTagName } from '../ui/tag-suggest';
 import { isWebUrl } from './embed';
 
@@ -224,4 +225,67 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
 	} catch {
 		return false;
 	}
+}
+
+/** Tooltip / aria label for a clickable chip prefix. */
+export function chipActionTitle(value: ClassifiedValue): string {
+	switch (value.kind) {
+		case 'tag':
+			return t('tooltip.openTagSearch');
+		case 'url':
+			return t('tooltip.openLink');
+		case 'document':
+			return t('tooltip.openFile');
+		default:
+			return '';
+	}
+}
+
+/**
+ * Prefix icon on a list chip. Tag / URL / document kinds are clickable.
+ * Returns the prefix element (hide it while the chip is being edited).
+ */
+export function appendClassifiedChipPrefix(
+	chip: HTMLElement,
+	classified: ClassifiedValue,
+	opts: { app: App; sourcePath: string },
+): HTMLElement {
+	const prefix = chip.createSpan({
+		cls:
+			classified.kind === 'text'
+				? 'f2-rename-chip-prefix'
+				: 'f2-rename-chip-prefix is-action',
+		attr:
+			classified.kind === 'text'
+				? undefined
+				: {
+						role: 'button',
+						tabindex: '0',
+						title: chipActionTitle(classified),
+						'aria-label': chipActionTitle(classified),
+					},
+	});
+	setIcon(prefix, classified.icon);
+	if (classified.kind !== 'text') {
+		const openValue = (evt: Event): void => {
+			evt.preventDefault();
+			evt.stopPropagation();
+			void openClassifiedValue(
+				opts.app,
+				classified,
+				opts.sourcePath,
+			);
+		};
+		prefix.addEventListener('click', openValue);
+		prefix.addEventListener('keydown', (evt: KeyboardEvent) => {
+			if (evt.key === 'Enter' || evt.key === ' ') {
+				openValue(evt);
+			}
+		});
+		prefix.addEventListener('dblclick', (evt) => {
+			evt.preventDefault();
+			evt.stopPropagation();
+		});
+	}
+	return prefix;
 }
