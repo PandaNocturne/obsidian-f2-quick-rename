@@ -10,7 +10,7 @@ export const zhCN: Record<TranslationKey, string> = {
 
 	'commands.renameFileOrEmbed': '重命名文件或嵌入',
 	'commands.renameAndEditAllProperties': '重命名并编辑全部属性',
-	'menu.f2Rename': 'F2 重命名',
+	'menu.f2Rename': 'F2 快速重命名',
 
 	'notice.noOpenFile': '没有打开的文件',
 	'notice.fullPropertiesMarkdownOnly': '仅支持 Markdown 笔记的全属性面板',

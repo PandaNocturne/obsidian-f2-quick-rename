@@ -8,7 +8,7 @@ export const en = {
 
 	'commands.renameFileOrEmbed': 'Rename file or embed',
 	'commands.renameAndEditAllProperties': 'Rename and edit all properties',
-	'menu.f2Rename': 'F2 rename',
+	'menu.f2Rename': 'F2 Quick rename',
 
 	'notice.noOpenFile': 'No file is open',
 	'notice.fullPropertiesMarkdownOnly':

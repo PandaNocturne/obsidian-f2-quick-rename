@@ -1,4 +1,4 @@
-# F2 Rename
+# F2 Quick Rename
 
 [中文说明](./README.zh-CN.md)
 
@@ -19,7 +19,7 @@ Migrated from a QuickAdd user script. Author: [PandaNocturne](https://github.com
 - Excalidraw — edit the stem without `.excalidraw` / `.excalidraw.md`, restore on save
 - Companion files (same folder, same basename, different extension) can be renamed together
 - Optional: copy the new basename to the clipboard after renaming the active note
-- File explorer context menu: **F2 rename**
+- File explorer context menu: **F2 Quick rename**
 - Optional: double-click the extension suffix in the panel to edit it (off by default)
 
 ### Properties (F2 / F5)
@@ -59,8 +59,8 @@ Hotkeys can be changed under **Settings → Hotkeys**.
 ### Manual
 
 1. Build or download `main.js`, `manifest.json`, and `styles.css`
-2. Copy them to `<Vault>/.obsidian/plugins/obsidian-f2-rename/`
-3. Enable **F2 Rename** in **Settings → Community plugins**
+2. Copy them to `<Vault>/.obsidian/plugins/f2-quick-rename/`
+3. Enable **F2 Quick Rename** in **Settings → Community plugins**
 
 ### Develop
 

@@ -1,4 +1,4 @@
-# F2 Rename
+# F2 Quick Rename
 
 [English](./README.md)
 
@@ -19,7 +19,7 @@ Obsidian 快速重命名插件：当前笔记、光标处嵌入/链接，以及 
 - Excalidraw — 编辑时不含 `.excalidraw` / `.excalidraw.md` 后缀，保存时自动还原
 - 同文件夹、同主文件名、不同扩展名的文件可一并重命名
 - 可选：重命名当前打开的笔记后，将新主文件名写入剪贴板
-- 文件资源管理器右键：**F2 重命名**
+- 文件资源管理器右键：**F2 快速重命名**
 - 可选：在面板中双击扩展名进行编辑（默认关闭）
 
 ### 属性（F2 / F5）
@@ -59,8 +59,8 @@ Obsidian 快速重命名插件：当前笔记、光标处嵌入/链接，以及 
 ### 手动安装
 
 1. 构建或下载 `main.js`、`manifest.json`、`styles.css`
-2. 复制到 `<库>/.obsidian/plugins/obsidian-f2-rename/`
-3. 在 **设置 → 社区插件** 中启用 **F2 Rename**
+2. 复制到 `<库>/.obsidian/plugins/f2-quick-rename/`
+3. 在 **设置 → 社区插件** 中启用 **F2 Quick Rename**
 
 ### 开发
 
