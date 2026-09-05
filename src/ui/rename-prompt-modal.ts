@@ -311,14 +311,10 @@ export class RenamePromptModal extends Modal {
 		this.syncFullModeHeaderButton();
 
 		window.setTimeout(() => {
-			let focusEl = this.inputEl;
-			if (isUrl) {
-				focusEl = this.aliasValue
-					? (this.aliasInputEl ?? this.inputEl)
-					: this.inputEl;
-			} else if (showAlias && this.aliasValue) {
-				focusEl = this.aliasInputEl ?? this.inputEl;
-			}
+			// Always focus the first row: title (url) or filename (file).
+			const focusEl = isUrl
+				? (this.aliasInputEl ?? this.inputEl)
+				: this.inputEl;
 			focusEl?.focus();
 			focusEl?.select();
 		}, 50);
