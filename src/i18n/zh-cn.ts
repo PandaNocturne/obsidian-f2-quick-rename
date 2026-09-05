@@ -39,7 +39,7 @@ export const zhCN: Record<TranslationKey, string> = {
 	'modal.field.aliasPlaceholder': '可选，对应 | 后的显示名',
 	'modal.addProperty': '添加属性',
 	'modal.section.properties': '属性',
-	'modal.section.more': '属性',
+	'modal.section.more': '更多',
 
 	'tooltip.doubleClickToEdit': '双击编辑',
 	'tooltip.clickIconOpenDoubleClickEdit': '点击图标打开，双击编辑',
@@ -52,6 +52,7 @@ export const zhCN: Record<TranslationKey, string> = {
 
 	'header.openFolder': '在文件夹中显示',
 	'header.copyWiki': '复制 wiki',
+	'header.fullProperties': '全部属性',
 	'notice.folderRevealUnavailable': '仅桌面端可在文件夹中显示',
 	'notice.copiedWiki': '已复制 wiki 链接',
 	'notice.copiedText': '已复制',

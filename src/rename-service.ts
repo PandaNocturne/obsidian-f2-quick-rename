@@ -213,6 +213,17 @@ export class RenameService {
 				autoSaveProperties && target
 					? (values) => this.applyProperties(target, values)
 					: undefined,
+			onFullPropertiesChange:
+				autoSaveProperties && target
+					? (fields, values) =>
+							this.applyPanelProperties(
+								target,
+								fields,
+								values,
+								fields.map((field) => field.key.trim()).filter(Boolean),
+								false,
+							)
+					: undefined,
 		});
 		if (result === null) return;
 
@@ -259,7 +270,19 @@ export class RenameService {
 			canEditProperties &&
 			!settings.autoSaveProperties
 		) {
-			await this.applyProperties(target, result.properties);
+			if (result.fullPropertyFields) {
+				await this.applyPanelProperties(
+					target,
+					result.fullPropertyFields,
+					result.properties,
+					result.fullPropertyFields
+						.map((field) => field.key.trim())
+						.filter(Boolean),
+					false,
+				);
+			} else {
+				await this.applyProperties(target, result.properties);
+			}
 		}
 
 		if (!nameChanged) return;
@@ -286,18 +309,18 @@ export class RenameService {
 			canEditProperties && settings.autoSaveProperties;
 
 		// F5: full YAML editor. F2: configured fields only (alias labels, no
-		// rename/delete/reorder) via the classic “更多” panel.
+		// rename/delete/reorder). Always pass configured items so the header
+		// icon can toggle between F2 and F5 in the same dialog.
 		const fullPropertyFields = useFullList
 			? buildFullPropertyStates(this.app, target)
 			: undefined;
-		const properties =
-			wantProperties && !useFullList
-				? buildPropertyPanelItems(
-						this.app,
-						target,
-						settings.propertyFields,
-					)
-				: undefined;
+		const properties = wantProperties
+			? buildPropertyPanelItems(
+					this.app,
+					target,
+					settings.propertyFields,
+				)
+			: undefined;
 		const managedKeys = (fullPropertyFields ?? []).map((field) => field.key);
 
 		const trackManagedKeys = (fields: PropertyFieldState[]) => {
@@ -320,23 +343,21 @@ export class RenameService {
 			propertiesOpen:
 				useFullList || !settings.propertiesDefaultCollapsed,
 			autoSaveProperties,
-			onPropertiesChange:
-				autoSaveProperties && !useFullList
-					? (values) => this.applyProperties(target, values)
-					: undefined,
-			onFullPropertiesChange:
-				autoSaveProperties && useFullList
-					? (fields, values) => {
-							trackManagedKeys(fields);
-							return this.applyPanelProperties(
-								target,
-								fields,
-								values,
-								managedKeys,
-								false,
-							);
-						}
-					: undefined,
+			onPropertiesChange: autoSaveProperties
+				? (values) => this.applyProperties(target, values)
+				: undefined,
+			onFullPropertiesChange: autoSaveProperties
+				? (fields, values) => {
+						trackManagedKeys(fields);
+						return this.applyPanelProperties(
+							target,
+							fields,
+							values,
+							managedKeys,
+							false,
+						);
+					}
+				: undefined,
 		});
 		if (result === null) return;
 
@@ -358,12 +379,11 @@ export class RenameService {
 			canEditProperties &&
 			!settings.autoSaveProperties
 		) {
-			if (useFullList) {
-				const fields = result.fullPropertyFields ?? [];
-				trackManagedKeys(fields);
+			if (result.fullPropertyFields) {
+				trackManagedKeys(result.fullPropertyFields);
 				await this.applyPanelProperties(
 					target,
-					fields,
+					result.fullPropertyFields,
 					result.properties,
 					managedKeys,
 					false,

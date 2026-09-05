@@ -43,7 +43,7 @@ export const en = {
 	'modal.field.aliasPlaceholder': 'Optional; display name after |',
 	'modal.addProperty': 'Add property',
 	'modal.section.properties': 'Properties',
-	'modal.section.more': 'Properties',
+	'modal.section.more': 'More',
 
 	'tooltip.doubleClickToEdit': 'Double-click to edit',
 	'tooltip.clickIconOpenDoubleClickEdit':
@@ -57,6 +57,7 @@ export const en = {
 
 	'header.openFolder': 'Show in folder',
 	'header.copyWiki': 'Copy wikilink',
+	'header.fullProperties': 'All properties',
 	'notice.folderRevealUnavailable':
 		'Show in folder is only available on desktop',
 	'notice.copiedWiki': 'Copied wikilink',

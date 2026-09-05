@@ -8,6 +8,12 @@
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+
+	.modal-close-button,
+	.modal-header{
+		display: none;
+	}
+
 }
 
 .f2-rename-modal .modal-content {
@@ -72,6 +78,10 @@
 
 .f2-rename-header-action:hover:not(:disabled) {
 	color: var(--text-normal);
+}
+
+.f2-rename-header-action.is-active {
+	color: var(--text-accent);
 }
 
 .f2-rename-header-action.is-disabled,

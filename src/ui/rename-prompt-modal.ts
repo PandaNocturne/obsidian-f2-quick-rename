@@ -19,6 +19,7 @@ import {
 	renameFileKindIcon,
 	resolveRenameFileKind,
 } from '../utils/embed';
+import { buildFullPropertyStates } from '../utils/properties';
 import { FullPropertiesPanel } from './full-properties-panel';
 import {
 	ListValueSuggest,
@@ -65,15 +66,14 @@ export interface RenamePromptOptions {
 	sourcePath?: string;
 	/** Related vault file (click label icon to open). */
 	relatedFile?: TFile | null;
-	/** Document properties / separators shown under the collapsible “更多” section. */
+	/** Document properties / separators shown under the F2「属性」panel. */
 	properties?: PropertyPanelItem[];
 	/**
 	 * Custom YAML properties editor (add / delete / reorder).
-	 * F2 passes configured fields; F5 passes all frontmatter keys.
-	 * When set, replaces the configured “更多” section.
+	 * When set at open (F5), replaces the configured properties section.
 	 */
 	fullProperties?: PropertyFieldState[];
-	/** Open the properties section by default (F5 uses true). */
+	/** Open the configured properties section by default. */
 	propertiesOpen?: boolean;
 	/** Persist property edits immediately (default driven by settings). */
 	autoSaveProperties?: boolean;
@@ -86,11 +86,6 @@ export interface RenamePromptOptions {
 		fields: PropertyFieldState[],
 		values: Record<string, PropertyValue>,
 	) => void | Promise<void>;
-	/**
-	 * When true (F2), only configured properties are shown initially;
-	 * session-added properties appear until the dialog closes.
-	 */
-	propertiesMergeWrites?: boolean;
 }
 
 /**
@@ -112,8 +107,13 @@ export class RenamePromptModal extends Modal {
 	private propertySaveTimer: number | null = null;
 	private fullPropertiesPanel: FullPropertiesPanel | null = null;
 	private configuredPropertiesEl: HTMLElement | null = null;
+	private fullPropertiesEl: HTMLElement | null = null;
+	private bodyEl: HTMLElement | null = null;
+	private footerLeftEl: HTMLElement | null = null;
 	private moreToggleBtn: HTMLButtonElement | null = null;
+	private fullModeHeaderBtn: HTMLButtonElement | null = null;
 	private propertiesVisible = false;
+	private usingFullProperties = false;
 
 	constructor(
 		app: App,
@@ -172,6 +172,7 @@ export class RenamePromptModal extends Modal {
 		this.renderHeaderActions(header);
 
 		const body = contentEl.createDiv({ cls: 'f2-rename-body' });
+		this.bodyEl = body;
 		const form = body.createDiv({ cls: 'f2-rename-form' });
 
 		const isUrl = this.options.mode === 'url';
@@ -267,6 +268,7 @@ export class RenamePromptModal extends Modal {
 		const properties = this.options.properties ?? [];
 		const fullProperties = this.options.fullProperties;
 		if (fullProperties) {
+			this.usingFullProperties = true;
 			this.renderFullPropertiesSection(body, fullProperties);
 		} else if (properties.length > 0) {
 			this.propertiesVisible = Boolean(this.options.propertiesOpen);
@@ -275,29 +277,10 @@ export class RenamePromptModal extends Modal {
 
 		const footer = contentEl.createDiv({ cls: 'f2-rename-footer' });
 		const left = footer.createDiv({ cls: 'f2-rename-footer-left' });
+		this.footerLeftEl = left;
 		const right = footer.createDiv({ cls: 'f2-rename-footer-right' });
 
-		if (fullProperties) {
-			const addBtn = left.createEl('button', {
-				cls: 'f2-rename-btn f2-rename-btn-add-prop',
-				attr: { type: 'button' },
-			});
-			const addIcon = addBtn.createSpan({
-				cls: 'f2-rename-btn-add-prop-icon',
-			});
-			setIcon(addIcon, 'plus');
-			addBtn.createSpan({ text: t('modal.addProperty') });
-			addBtn.addEventListener('click', () => this.handleAddProperty());
-		} else if (properties.length > 0) {
-			this.moreToggleBtn = left.createEl('button', {
-				cls: 'f2-rename-btn f2-rename-btn-more',
-				attr: { type: 'button' },
-			});
-			this.syncMoreToggleButton();
-			this.moreToggleBtn.addEventListener('click', () => {
-				this.setConfiguredPropertiesVisible(!this.propertiesVisible);
-			});
-		}
+		this.renderFooterLeftActions();
 
 		const cancelBtn = right.createEl('button', {
 			text: t('common.cancel'),
@@ -312,6 +295,8 @@ export class RenamePromptModal extends Modal {
 			attr: { type: 'button' },
 		});
 		confirmBtn.addEventListener('click', () => this.submitResult());
+
+		this.syncFullModeHeaderButton();
 
 		window.setTimeout(() => {
 			let focusEl = this.inputEl;
@@ -328,9 +313,7 @@ export class RenamePromptModal extends Modal {
 	}
 
 	onClose(): void {
-		if (this.options.autoSaveProperties) {
-			void this.persistProperties(true);
-		} else if (this.propertySaveTimer !== null) {
+		if (this.propertySaveTimer !== null) {
 			window.clearTimeout(this.propertySaveTimer);
 			this.propertySaveTimer = null;
 		}
@@ -338,13 +321,19 @@ export class RenamePromptModal extends Modal {
 			void this.fullPropertiesPanel.flush();
 			this.fullPropertiesPanel.destroy();
 			this.fullPropertiesPanel = null;
+		} else if (this.options.autoSaveProperties) {
+			void this.persistProperties(true);
 		}
 		const { contentEl } = this;
 		contentEl.empty();
 		this.inputEl = null;
 		this.aliasInputEl = null;
 		this.configuredPropertiesEl = null;
+		this.fullPropertiesEl = null;
+		this.bodyEl = null;
+		this.footerLeftEl = null;
 		this.moreToggleBtn = null;
+		this.fullModeHeaderBtn = null;
 		if (!this.resolved) {
 			this.resolved = true;
 			this.onSubmit(null);
@@ -418,6 +407,15 @@ export class RenamePromptModal extends Modal {
 				void this.copyHeaderText(wiki, t('notice.copiedWiki'));
 			},
 		});
+
+		if (this.canToggleFullProperties()) {
+			this.fullModeHeaderBtn = this.createHeaderActionButton(actions, {
+				icon: 'list',
+				label: t('header.fullProperties'),
+				onClick: () => this.toggleFullPropertiesMode(),
+			});
+			this.syncFullModeHeaderButton();
+		}
 	}
 
 	private createHeaderActionButton(
@@ -428,7 +426,7 @@ export class RenamePromptModal extends Modal {
 			disabled?: boolean;
 			onClick: () => void;
 		},
-	): void {
+	): HTMLButtonElement {
 		const btn = parent.createEl('button', {
 			cls: 'clickable-icon f2-rename-header-action',
 			attr: {
@@ -447,6 +445,7 @@ export class RenamePromptModal extends Modal {
 			if (btn.disabled) return;
 			opts.onClick();
 		});
+		return btn;
 	}
 
 	private async copyHeaderText(
@@ -464,6 +463,7 @@ export class RenamePromptModal extends Modal {
 		const section = parent.createDiv({
 			cls: 'f2-rename-props-panel f2-rename-props-panel-full',
 		});
+		this.fullPropertiesEl = section;
 		this.fullPropertiesPanel = new FullPropertiesPanel({
 			app: this.app,
 			fields,
@@ -487,6 +487,42 @@ export class RenamePromptModal extends Modal {
 		this.fullPropertiesPanel.mount(section);
 	}
 
+	private renderAddPropertyButton(parent: HTMLElement): void {
+		const addBtn = parent.createEl('button', {
+			cls: 'f2-rename-btn f2-rename-btn-add-prop',
+			attr: { type: 'button' },
+		});
+		const addIcon = addBtn.createSpan({
+			cls: 'f2-rename-btn-add-prop-icon',
+		});
+		setIcon(addIcon, 'plus');
+		addBtn.createSpan({ text: t('modal.addProperty') });
+		addBtn.addEventListener('click', () => this.handleAddProperty());
+	}
+
+	private renderFooterLeftActions(): void {
+		const left = this.footerLeftEl;
+		if (!left) return;
+		left.empty();
+		this.moreToggleBtn = null;
+
+		if (this.usingFullProperties) {
+			this.renderAddPropertyButton(left);
+			return;
+		}
+
+		if ((this.options.properties?.length ?? 0) > 0) {
+			this.moreToggleBtn = left.createEl('button', {
+				cls: 'f2-rename-btn f2-rename-btn-more',
+				attr: { type: 'button' },
+			});
+			this.syncMoreToggleButton();
+			this.moreToggleBtn.addEventListener('click', () => {
+				this.setConfiguredPropertiesVisible(!this.propertiesVisible);
+			});
+		}
+	}
+
 	private handleAddProperty(): void {
 		if (this.fullPropertiesPanel) {
 			this.fullPropertiesPanel.addProperty();
@@ -494,6 +530,169 @@ export class RenamePromptModal extends Modal {
 		}
 
 		new Notice(t('notice.addPropertyUnsupported'));
+	}
+
+	private canToggleFullProperties(): boolean {
+		const file = this.options.relatedFile;
+		if (!file || file.extension !== 'md') return false;
+		return (
+			(this.options.properties?.length ?? 0) > 0 ||
+			Boolean(this.options.fullProperties)
+		);
+	}
+
+	private toggleFullPropertiesMode(): void {
+		if (this.usingFullProperties) {
+			this.switchToConfiguredProperties();
+		} else {
+			this.switchToFullProperties();
+		}
+	}
+
+	private syncFullModeHeaderButton(): void {
+		const btn = this.fullModeHeaderBtn;
+		if (!btn) return;
+		btn.toggleClass('is-active', this.usingFullProperties);
+		btn.setAttr(
+			'aria-pressed',
+			this.usingFullProperties ? 'true' : 'false',
+		);
+	}
+
+	/**
+	 * Switch F2 configured panel → F5 full YAML panel in the same dialog.
+	 */
+	private switchToFullProperties(): void {
+		if (this.usingFullProperties) return;
+		const file = this.options.relatedFile;
+		const body = this.bodyEl;
+		if (!file || !body) {
+			new Notice(t('notice.fullPropertiesMarkdownOnly'));
+			return;
+		}
+		if (file.extension !== 'md') {
+			new Notice(t('notice.fullPropertiesMarkdownOnly'));
+			return;
+		}
+
+		if (this.propertySaveTimer !== null) {
+			window.clearTimeout(this.propertySaveTimer);
+			this.propertySaveTimer = null;
+		}
+
+		this.configuredPropertiesEl?.remove();
+		this.configuredPropertiesEl = null;
+		this.usingFullProperties = true;
+
+		const fields = this.buildFieldsForFullSwitch(file);
+		this.renderFullPropertiesSection(body, fields);
+		this.renderFooterLeftActions();
+		this.syncFullModeHeaderButton();
+
+		if (
+			this.options.autoSaveProperties &&
+			this.options.onFullPropertiesChange &&
+			this.fullPropertiesPanel
+		) {
+			const snapshot = this.fullPropertiesPanel.getSnapshot();
+			void this.options.onFullPropertiesChange(
+				snapshot.fields,
+				snapshot.values,
+			);
+		}
+
+		this.fullPropertiesEl?.scrollIntoView({
+			block: 'nearest',
+			behavior: 'smooth',
+		});
+	}
+
+	/**
+	 * Switch F5 full panel → F2 configured properties panel.
+	 */
+	private switchToConfiguredProperties(): void {
+		if (!this.usingFullProperties) return;
+		const body = this.bodyEl;
+		const properties = this.options.properties ?? [];
+		if (!body || properties.length === 0) {
+			this.usingFullProperties = false;
+			this.syncFullModeHeaderButton();
+			return;
+		}
+
+		if (this.fullPropertiesPanel) {
+			const snapshot = this.fullPropertiesPanel.getSnapshot();
+			for (const [key, value] of Object.entries(snapshot.values)) {
+				this.propertyValues[key] = this.cloneValue(value);
+			}
+			if (
+				this.options.autoSaveProperties &&
+				this.options.onFullPropertiesChange
+			) {
+				void this.fullPropertiesPanel.flush();
+			}
+			this.fullPropertiesPanel.destroy();
+			this.fullPropertiesPanel = null;
+		}
+		this.fullPropertiesEl?.remove();
+		this.fullPropertiesEl = null;
+
+		this.usingFullProperties = false;
+		this.propertiesVisible = true;
+		this.renderConfiguredPropertiesSection(body, properties);
+		this.renderFooterLeftActions();
+		this.syncFullModeHeaderButton();
+
+		this.configuredPropertiesEl?.scrollIntoView({
+			block: 'nearest',
+			behavior: 'smooth',
+		});
+	}
+
+	private buildFieldsForFullSwitch(file: TFile): PropertyFieldState[] {
+		const fields = buildFullPropertyStates(this.app, file);
+		const byKey = new Map(fields.map((field) => [field.key, field]));
+
+		for (const field of this.collectConfiguredFields()) {
+			const edited = this.propertyValues[field.key];
+			const value =
+				edited !== undefined
+					? this.cloneValue(edited)
+					: this.cloneValue(field.value);
+			const existing = byKey.get(field.key);
+			if (existing) {
+				existing.value = value;
+				continue;
+			}
+			const next: PropertyFieldState = {
+				key: field.key,
+				type: field.type,
+				label: field.key,
+				showHint: field.showHint,
+				multiline: field.multiline,
+				value,
+			};
+			fields.push(next);
+			byKey.set(field.key, next);
+		}
+
+		for (const [key, value] of Object.entries(this.propertyValues)) {
+			const existing = byKey.get(key);
+			if (existing) {
+				existing.value = this.cloneValue(value);
+			}
+		}
+
+		return fields;
+	}
+
+	private collectConfiguredFields(): PropertyFieldState[] {
+		const fields: PropertyFieldState[] = [];
+		for (const item of this.options.properties ?? []) {
+			if (item.kind === 'field') fields.push(item.field);
+			else if (item.kind === 'row') fields.push(...item.fields);
+		}
+		return fields;
 	}
 
 	private renderConfiguredPropertiesSection(
@@ -550,7 +749,7 @@ export class RenamePromptModal extends Modal {
 	private syncMoreToggleButton(): void {
 		const btn = this.moreToggleBtn;
 		if (!btn) return;
-		btn.setText(t('modal.section.more'));
+		btn.setText(t('modal.section.properties'));
 		btn.toggleClass('f2-rename-btn-primary', this.propertiesVisible);
 		btn.toggleClass('mod-cta', this.propertiesVisible);
 		btn.toggleClass('is-active', this.propertiesVisible);
@@ -1285,19 +1484,17 @@ export class RenamePromptModal extends Modal {
 				result.extension = normalizeExtensionSuffix(ext);
 			}
 		}
-		if ((this.options.properties?.length ?? 0) > 0) {
-			result.properties = { ...this.propertyValues };
-			// Flush any pending debounced auto-save before closing.
-			if (this.options.autoSaveProperties) {
-				void this.persistProperties(true);
-			}
-		}
 		if (this.fullPropertiesPanel) {
 			const snapshot = this.fullPropertiesPanel.getSnapshot();
 			result.properties = snapshot.values;
 			result.fullPropertyFields = snapshot.fields;
 			if (this.options.autoSaveProperties) {
 				void this.fullPropertiesPanel.flush();
+			}
+		} else if ((this.options.properties?.length ?? 0) > 0) {
+			result.properties = { ...this.propertyValues };
+			if (this.options.autoSaveProperties) {
+				void this.persistProperties(true);
 			}
 		}
 		this.submit(result);
