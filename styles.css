@@ -259,6 +259,7 @@
 	border-top: 1px solid var(--background-modifier-border);
 	padding-top: 0.65rem;
 	width: 100%;
+	min-height: 0;
 }
 
 .f2-rename-props-panel-configured {
@@ -267,6 +268,10 @@
 
 .f2-rename-props-panel-configured.is-open {
 	display: block;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
 }
 
 .f2-rename-props-panel-full {
@@ -274,13 +279,12 @@
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	overflow: hidden;
+	overflow-y: auto;
 }
 
 .f2-rename-props-panel-full .f2-full-props {
 	flex: 1 1 auto;
 	min-height: 0;
-	max-height: min(80vh, 32rem);
 	overflow-x: hidden;
 	overflow-y: auto;
 }
@@ -305,12 +309,14 @@
 	display: flex;
 	flex-direction: column;
 	gap: 0.35rem;
+	min-height: 0;
 }
 
 .f2-full-props-list {
 	display: flex;
 	flex-direction: column;
 	gap: 0.25rem;
+	min-height: 0;
 }
 
 .f2-full-props-row {
