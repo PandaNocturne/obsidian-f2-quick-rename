@@ -95,41 +95,64 @@
 }
 
 .f2-rename-form {
+	--f2-rename-label-width: 5.5rem;
+	--f2-rename-field-gap: 0.75rem;
 	display: flex;
 	flex-direction: column;
 	gap: 0.75rem;
 	width: 100%;
 }
 
+/* Form row: fixed label column + flexible control */
 .f2-rename-field {
-	display: flex;
-	flex-direction: row;
+	display: grid;
+	grid-template-columns: var(--f2-rename-label-width) minmax(0, 1fr);
+	column-gap: var(--f2-rename-field-gap);
 	align-items: center;
-	gap: 0.75rem;
 	width: 100%;
 }
 
 .f2-rename-label {
-	/* flex: 0 0 4rem; */
+	box-sizing: border-box;
 	margin: 0;
+	min-width: 0;
 	font-size: var(--font-ui-small);
 	font-weight: var(--font-medium);
 	color: var(--text-muted);
 	letter-spacing: 0.01em;
 	text-align: left;
 	line-height: 1.2;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.f2-rename-prop-label {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 0.3rem;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.f2-rename-prop-label > span:last-child {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .f2-rename-control {
 	display: flex;
-	flex: 1;
 	align-items: center;
 	gap: 0.4rem;
 	min-width: 0;
+	width: 100%;
 }
 
 .f2-rename-field-multiline {
-	align-items: flex-start;
+	align-items: start;
 }
 
 .f2-rename-field-multiline .f2-rename-label {
@@ -221,10 +244,22 @@
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-/* Collapsible document properties */
-.f2-rename-more {
+/* Configured properties (F2) and full properties (F5) panels */
+.f2-rename-props-panel {
 	border-top: 1px solid var(--background-modifier-border);
-	padding-top: 0.35rem;
+	padding-top: 0.65rem;
+	width: 100%;
+}
+
+.f2-rename-props-panel-configured {
+	display: none;
+}
+
+.f2-rename-props-panel-configured.is-open {
+	display: block;
+}
+
+.f2-rename-props-panel-full {
 	flex: 1 1 auto;
 	min-height: 0;
 	display: flex;
@@ -232,52 +267,27 @@
 	overflow: hidden;
 }
 
-.f2-rename-more:not([open]) {
-	flex: 0 0 auto;
-	overflow: visible;
-}
-
-.f2-rename-more-summary {
-	display: flex;
-	align-items: center;
-	gap: 0.35rem;
-	cursor: pointer;
-	list-style: none;
-	user-select: none;
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
-	font-weight: var(--font-medium);
-	padding: 0.35rem 0;
-	flex-shrink: 0;
-}
-
-.f2-rename-more-summary::-webkit-details-marker {
-	display: none;
-}
-
-.f2-rename-more-chevron {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: transform 0.12s ease;
-}
-
-.f2-rename-more-chevron svg {
-	width: 0.9rem;
-	height: 0.9rem;
-}
-
-.f2-rename-more[open] .f2-rename-more-chevron {
-	transform: rotate(90deg);
-}
-
-.f2-rename-more-body {
-	padding: 0.5rem 0 0.15rem;
+.f2-rename-props-panel-full .f2-full-props {
 	flex: 1 1 auto;
 	min-height: 0;
 	max-height: min(80vh, 32rem);
 	overflow-x: hidden;
 	overflow-y: auto;
+}
+
+.f2-rename-btn-add-prop {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.f2-rename-btn-add-prop-icon {
+	display: inline-flex;
+}
+
+.f2-rename-btn-add-prop-icon svg {
+	width: 0.95rem;
+	height: 0.95rem;
 }
 
 /* Full YAML properties panel (F5) */
@@ -418,30 +428,9 @@
 	gap: 0.35rem;
 }
 
-.f2-rename-btn-add-prop {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.35rem;
-}
-
-.f2-rename-btn-add-prop-icon {
-	display: inline-flex;
-}
-
-.f2-rename-btn-add-prop-icon svg {
-	width: 0.95rem;
-	height: 0.95rem;
-}
-
-.f2-rename-prop-label {
-	display: inline-flex;
-	align-items: center;
-	justify-content: flex-start;
-	gap: 0.3rem;
-}
-
 .f2-rename-prop-icon {
 	display: inline-flex;
+	flex: 0 0 auto;
 	opacity: 0.7;
 }
 
@@ -456,24 +445,31 @@
 	height: 1.1rem;
 }
 
-/* List property: label+input on one row; chips below the input */
+/* List property: same form grid as other fields; chips under the control */
 .f2-rename-list-field {
-	display: flex;
-	flex-direction: column;
-	gap: 0.4rem;
+	display: grid;
+	grid-template-columns: var(--f2-rename-label-width, 5.5rem) minmax(0, 1fr);
+	column-gap: var(--f2-rename-field-gap, 0.75rem);
+	row-gap: 0.4rem;
+	align-items: start;
 	width: 100%;
 }
 
+/* Flatten head so label + input share the parent form grid */
 .f2-rename-list-head {
-	align-items: center;
+	display: contents;
+}
+
+.f2-rename-list-field .f2-rename-label {
+	align-self: center;
 }
 
 .f2-rename-list-chips {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.35rem;
-	/* Align under the input (after the label column) */
-	margin-left: calc(4rem + 0.75rem);
+	grid-column: 2;
+	min-width: 0;
 }
 
 .f2-rename-list-chips:empty {
@@ -700,12 +696,6 @@
 .f2-rename-prop-row-cell .f2-rename-field,
 .f2-rename-prop-row-cell .f2-rename-list-field {
 	width: 100%;
-}
-
-.f2-rename-prop-row-cell .f2-rename-label {
-	flex: 0 0 auto;
-	min-width: 0;
-	max-width: 40%;
 }
 
 /* Settings: property field rows */

@@ -39,7 +39,7 @@ export const zhCN: Record<TranslationKey, string> = {
 	'modal.field.aliasPlaceholder': '可选，对应 | 后的显示名',
 	'modal.addProperty': '添加属性',
 	'modal.section.properties': '属性',
-	'modal.section.more': '更多',
+	'modal.section.more': '属性',
 
 	'tooltip.doubleClickToEdit': '双击编辑',
 	'tooltip.clickIconOpenDoubleClickEdit': '点击图标打开，双击编辑',
@@ -98,10 +98,10 @@ export const zhCN: Record<TranslationKey, string> = {
 		'重命名当前打开的笔记后，将新主文件名写入剪贴板（重命名嵌入时不复制）。',
 	'settings.features.editProperties.name': '编辑文档属性',
 	'settings.features.editProperties.desc':
-		'重命名当前笔记或可识别的嵌入 Markdown 文档时，在「更多」中编辑配置的 frontmatter 属性。',
+		'重命名当前笔记或可识别的嵌入 Markdown 文档时，在「属性」中编辑配置的 frontmatter 属性。',
 	'settings.features.autoSaveProperties.name': '属性编辑自动保存',
 	'settings.features.autoSaveProperties.desc':
-		'在「更多」中修改属性后立即写入笔记，无需点击确认。关闭后需点击「确认」才会保存属性。',
+		'在「属性」中修改属性后立即写入笔记，无需点击确认。关闭后需点击「确认」才会保存属性。',
 	'settings.features.editExtension.name': '双击修改扩展名',
 	'settings.features.editExtension.desc':
 		'开启后，可在重命名面板中双击文件名后的扩展名进行编辑（例如 .md）。默认关闭。',
@@ -109,9 +109,9 @@ export const zhCN: Record<TranslationKey, string> = {
 	'settings.propertyFields.heading': '文档属性',
 	'settings.propertyFields.defaultCollapsed.name': '默认折叠',
 	'settings.propertyFields.defaultCollapsed.desc':
-		'开启后，重命名面板中的属性区域默认折叠。F5 全量属性仍会默认展开。',
+		'开启后，F2 默认隐藏配置属性，需点击「属性」才显示。F5 全量属性始终展开。',
 	'settings.propertyFields.intro':
-		'配置重命名面板「更多」中可编辑的属性。拖动调整顺序；可将属性拖入「并排容器」使其在同一行显示。列表开启「提示」后会从库中该属性已有值弹出下拉建议。',
+		'配置重命名面板「属性」中可编辑的属性。拖动调整顺序；可将属性拖入「并排容器」使其在同一行显示。列表开启「提示」后会从库中该属性已有值弹出下拉建议。',
 	'settings.propertyFields.addProperty': '添加属性',
 	'settings.propertyFields.addSeparator': '添加分隔符',
 	'settings.propertyFields.addRow': '添加并排容器',

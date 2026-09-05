@@ -147,13 +147,19 @@ function toFieldState(
 ): PropertyFieldState | null {
 	const key = item.key.trim();
 	if (!key) return null;
+	const value = readPropertyValue(
+		readFrontmatterValue(frontmatter, key),
+		item.type,
+	);
 	return {
 		key,
 		type: item.type,
 		label: item.label?.trim() || key,
 		showHint: item.showHint === true,
-		multiline: item.type === 'text' && item.multiline === true,
-		value: readPropertyValue(readFrontmatterValue(frontmatter, key), item.type),
+		multiline:
+			item.type === 'text' &&
+			(item.multiline === true || isMultilineTextValue(value)),
+		value,
 	};
 }
 

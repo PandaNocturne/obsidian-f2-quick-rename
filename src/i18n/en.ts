@@ -43,7 +43,7 @@ export const en = {
 	'modal.field.aliasPlaceholder': 'Optional; display name after |',
 	'modal.addProperty': 'Add property',
 	'modal.section.properties': 'Properties',
-	'modal.section.more': 'More',
+	'modal.section.more': 'Properties',
 
 	'tooltip.doubleClickToEdit': 'Double-click to edit',
 	'tooltip.clickIconOpenDoubleClickEdit':
@@ -105,10 +105,10 @@ export const en = {
 		'After renaming the active note, copy the new basename to the clipboard (not when renaming embeds).',
 	'settings.features.editProperties.name': 'Edit document properties',
 	'settings.features.editProperties.desc':
-		'When renaming the current note or a recognized embedded Markdown document, edit configured frontmatter properties under “More”.',
+		'When renaming the current note or a recognized embedded Markdown document, edit configured frontmatter properties under “Properties”.',
 	'settings.features.autoSaveProperties.name': 'Auto-save property edits',
 	'settings.features.autoSaveProperties.desc':
-		'Write property changes under “More” to the note immediately, without clicking Confirm. When off, properties are saved only after you click Confirm.',
+		'Write property changes under “Properties” to the note immediately, without clicking Confirm. When off, properties are saved only after you click Confirm.',
 	'settings.features.editExtension.name': 'Double-click to edit extension',
 	'settings.features.editExtension.desc':
 		'When enabled, double-click the extension after the filename in the rename panel to edit it (for example .md). Off by default.',
@@ -116,9 +116,9 @@ export const en = {
 	'settings.propertyFields.heading': 'Document properties',
 	'settings.propertyFields.defaultCollapsed.name': 'Collapse by default',
 	'settings.propertyFields.defaultCollapsed.desc':
-		'When enabled, the properties section in the rename panel starts collapsed. F5 full properties still opens expanded.',
+		'When enabled, F2 hides configured properties until you click Properties. F5 full properties always stay expanded.',
 	'settings.propertyFields.intro':
-		'Configure properties editable under “More” in the rename panel. Drag to reorder; drop properties into a “Side-by-side group” to show them on one row. For lists with “Suggest” enabled, existing vault values for that property appear as dropdown suggestions.',
+		'Configure properties editable under “Properties” in the rename panel. Drag to reorder; drop properties into a “Side-by-side group” to show them on one row. For lists with “Suggest” enabled, existing vault values for that property appear as dropdown suggestions.',
 	'settings.propertyFields.addProperty': 'Add property',
 	'settings.propertyFields.addSeparator': 'Add separator',
 	'settings.propertyFields.addRow': 'Add side-by-side group',

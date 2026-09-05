@@ -111,6 +111,9 @@ export class RenamePromptModal extends Modal {
 	private aliasInputEl: HTMLInputElement | null = null;
 	private propertySaveTimer: number | null = null;
 	private fullPropertiesPanel: FullPropertiesPanel | null = null;
+	private configuredPropertiesEl: HTMLElement | null = null;
+	private moreToggleBtn: HTMLButtonElement | null = null;
+	private propertiesVisible = false;
 
 	constructor(
 		app: App,
@@ -266,15 +269,15 @@ export class RenamePromptModal extends Modal {
 		if (fullProperties) {
 			this.renderFullPropertiesSection(body, fullProperties);
 		} else if (properties.length > 0) {
-			this.renderMoreSection(body, properties);
+			this.propertiesVisible = Boolean(this.options.propertiesOpen);
+			this.renderConfiguredPropertiesSection(body, properties);
 		}
 
 		const footer = contentEl.createDiv({ cls: 'f2-rename-footer' });
 		const left = footer.createDiv({ cls: 'f2-rename-footer-left' });
 		const right = footer.createDiv({ cls: 'f2-rename-footer-right' });
 
-		const canAddProperty = this.options.fullProperties !== undefined;
-		if (canAddProperty) {
+		if (fullProperties) {
 			const addBtn = left.createEl('button', {
 				cls: 'f2-rename-btn f2-rename-btn-add-prop',
 				attr: { type: 'button' },
@@ -285,6 +288,15 @@ export class RenamePromptModal extends Modal {
 			setIcon(addIcon, 'plus');
 			addBtn.createSpan({ text: t('modal.addProperty') });
 			addBtn.addEventListener('click', () => this.handleAddProperty());
+		} else if (properties.length > 0) {
+			this.moreToggleBtn = left.createEl('button', {
+				cls: 'f2-rename-btn f2-rename-btn-more',
+				attr: { type: 'button' },
+			});
+			this.syncMoreToggleButton();
+			this.moreToggleBtn.addEventListener('click', () => {
+				this.setConfiguredPropertiesVisible(!this.propertiesVisible);
+			});
 		}
 
 		const cancelBtn = right.createEl('button', {
@@ -331,6 +343,8 @@ export class RenamePromptModal extends Modal {
 		contentEl.empty();
 		this.inputEl = null;
 		this.aliasInputEl = null;
+		this.configuredPropertiesEl = null;
+		this.moreToggleBtn = null;
 		if (!this.resolved) {
 			this.resolved = true;
 			this.onSubmit(null);
@@ -447,20 +461,9 @@ export class RenamePromptModal extends Modal {
 		parent: HTMLElement,
 		fields: PropertyFieldState[],
 	): void {
-		const details = parent.createEl('details', {
-			cls: 'f2-rename-more f2-rename-more-full',
+		const section = parent.createDiv({
+			cls: 'f2-rename-props-panel f2-rename-props-panel-full',
 		});
-		details.open = Boolean(this.options.propertiesOpen);
-		const summary = details.createEl('summary', {
-			cls: 'f2-rename-more-summary',
-		});
-		const summaryIcon = summary.createSpan({
-			cls: 'f2-rename-more-chevron',
-		});
-		setIcon(summaryIcon, 'chevron-right');
-		summary.createSpan({ text: t('modal.section.properties') });
-
-		const panel = details.createDiv({ cls: 'f2-rename-more-body' });
 		this.fullPropertiesPanel = new FullPropertiesPanel({
 			app: this.app,
 			fields,
@@ -481,15 +484,10 @@ export class RenamePromptModal extends Modal {
 				}
 			},
 		});
-		this.fullPropertiesPanel.mount(panel);
+		this.fullPropertiesPanel.mount(section);
 	}
 
 	private handleAddProperty(): void {
-		const details = this.contentEl.querySelector('details.f2-rename-more');
-		if (details instanceof HTMLDetailsElement) {
-			details.open = true;
-		}
-
 		if (this.fullPropertiesPanel) {
 			this.fullPropertiesPanel.addProperty();
 			return;
@@ -498,27 +496,21 @@ export class RenamePromptModal extends Modal {
 		new Notice(t('notice.addPropertyUnsupported'));
 	}
 
-	private renderMoreSection(
+	private renderConfiguredPropertiesSection(
 		parent: HTMLElement,
 		properties: PropertyPanelItem[],
 	): void {
-		const details = parent.createEl('details', {
-			cls: 'f2-rename-more',
+		const section = parent.createDiv({
+			cls: 'f2-rename-props-panel f2-rename-props-panel-configured',
 		});
-		if (this.options.propertiesOpen) {
-			details.open = true;
-		}
-		const summary = details.createEl('summary', {
-			cls: 'f2-rename-more-summary',
-		});
-		const summaryIcon = summary.createSpan({
-			cls: 'f2-rename-more-chevron',
-		});
-		setIcon(summaryIcon, 'chevron-right');
-		summary.createSpan({ text: t('modal.section.more') });
+		this.configuredPropertiesEl = section;
+		section.toggleClass('is-open', this.propertiesVisible);
+		section.setAttr(
+			'aria-hidden',
+			this.propertiesVisible ? 'false' : 'true',
+		);
 
-		const panel = details.createDiv({ cls: 'f2-rename-more-body' });
-		const form = panel.createDiv({ cls: 'f2-rename-form' });
+		const form = section.createDiv({ cls: 'f2-rename-form' });
 
 		for (const item of properties) {
 			if (item.kind === 'separator') {
@@ -537,6 +529,35 @@ export class RenamePromptModal extends Modal {
 			}
 			this.renderPropertyField(form, item.field);
 		}
+	}
+
+	private setConfiguredPropertiesVisible(visible: boolean): void {
+		this.propertiesVisible = visible;
+		this.configuredPropertiesEl?.toggleClass('is-open', visible);
+		this.configuredPropertiesEl?.setAttr(
+			'aria-hidden',
+			visible ? 'false' : 'true',
+		);
+		this.syncMoreToggleButton();
+		if (visible) {
+			this.configuredPropertiesEl?.scrollIntoView({
+				block: 'nearest',
+				behavior: 'smooth',
+			});
+		}
+	}
+
+	private syncMoreToggleButton(): void {
+		const btn = this.moreToggleBtn;
+		if (!btn) return;
+		btn.setText(t('modal.section.more'));
+		btn.toggleClass('f2-rename-btn-primary', this.propertiesVisible);
+		btn.toggleClass('mod-cta', this.propertiesVisible);
+		btn.toggleClass('is-active', this.propertiesVisible);
+		btn.setAttr(
+			'aria-expanded',
+			this.propertiesVisible ? 'true' : 'false',
+		);
 	}
 
 	private renderPropertySeparator(
@@ -777,7 +798,7 @@ export class RenamePromptModal extends Modal {
 				id: `f2-prop-${field.key}`,
 				spellcheck: 'false',
 				autocomplete: 'off',
-				'data-property-type': field.key,
+				'data-property-type': propertyType,
 				...(field.showHint
 					? { placeholder: field.label }
 					: {}),
@@ -786,7 +807,7 @@ export class RenamePromptModal extends Modal {
 
 		const chips = wrap.createDiv({
 			cls: 'f2-rename-list-chips',
-			attr: { 'data-property-type': field.key },
+			attr: { 'data-property-type': propertyType },
 		});
 
 		const useTagSuggest = isTags || shouldSuggestTags(field.key);
@@ -828,7 +849,7 @@ export class RenamePromptModal extends Modal {
 							classified.kind === 'text'
 								? t('tooltip.doubleClickToEdit')
 								: t('tooltip.clickIconOpenDoubleClickEdit'),
-						'data-property-type': field.key,
+						'data-property-type': propertyType,
 						'data-value-kind': classified.kind,
 					},
 				});

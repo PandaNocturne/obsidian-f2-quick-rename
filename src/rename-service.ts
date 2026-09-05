@@ -16,7 +16,6 @@ import {
 } from './utils/embed';
 import type { PropertyFieldState, PropertyValue } from './settings';
 import {
-	buildConfiguredPropertyStates,
 	buildFullPropertyStates,
 	buildPropertyPanelItems,
 	writeFullFrontmatter,
@@ -283,22 +282,23 @@ export class RenameService {
 			target.extension === 'md' && settings.editProperties;
 		const useFullList = Boolean(options.fullProperties) && wantProperties;
 		const canEditProperties = wantProperties;
-		const mergeWrites = wantProperties && !useFullList;
+		const autoSaveProperties =
+			canEditProperties && settings.autoSaveProperties;
 
-		// F2: configured fields only; F5: every frontmatter key.
-		// Session-added F2 fields stay visible until close; next open resets.
-		const fullPropertyFields = !wantProperties
-			? undefined
-			: useFullList
-				? buildFullPropertyStates(this.app, target)
-				: buildConfiguredPropertyStates(
+		// F5: full YAML editor. F2: configured fields only (alias labels, no
+		// rename/delete/reorder) via the classic “更多” panel.
+		const fullPropertyFields = useFullList
+			? buildFullPropertyStates(this.app, target)
+			: undefined;
+		const properties =
+			wantProperties && !useFullList
+				? buildPropertyPanelItems(
 						this.app,
 						target,
 						settings.propertyFields,
-					);
+					)
+				: undefined;
 		const managedKeys = (fullPropertyFields ?? []).map((field) => field.key);
-		const autoSaveProperties =
-			canEditProperties && settings.autoSaveProperties;
 
 		const trackManagedKeys = (fields: PropertyFieldState[]) => {
 			for (const field of fields) {
@@ -315,23 +315,28 @@ export class RenameService {
 			allowEditExtension: settings.editExtension,
 			relatedFile: target,
 			sourcePath: target.path,
+			properties,
 			fullProperties: fullPropertyFields,
 			propertiesOpen:
 				useFullList || !settings.propertiesDefaultCollapsed,
-			propertiesMergeWrites: mergeWrites,
 			autoSaveProperties,
-			onFullPropertiesChange: autoSaveProperties
-				? (fields, values) => {
-						trackManagedKeys(fields);
-						return this.applyPanelProperties(
-							target,
-							fields,
-							values,
-							managedKeys,
-							mergeWrites,
-						);
-					}
-				: undefined,
+			onPropertiesChange:
+				autoSaveProperties && !useFullList
+					? (values) => this.applyProperties(target, values)
+					: undefined,
+			onFullPropertiesChange:
+				autoSaveProperties && useFullList
+					? (fields, values) => {
+							trackManagedKeys(fields);
+							return this.applyPanelProperties(
+								target,
+								fields,
+								values,
+								managedKeys,
+								false,
+							);
+						}
+					: undefined,
 		});
 		if (result === null) return;
 
@@ -353,15 +358,19 @@ export class RenameService {
 			canEditProperties &&
 			!settings.autoSaveProperties
 		) {
-			const fields = result.fullPropertyFields ?? [];
-			trackManagedKeys(fields);
-			await this.applyPanelProperties(
-				target,
-				fields,
-				result.properties,
-				managedKeys,
-				mergeWrites,
-			);
+			if (useFullList) {
+				const fields = result.fullPropertyFields ?? [];
+				trackManagedKeys(fields);
+				await this.applyPanelProperties(
+					target,
+					fields,
+					result.properties,
+					managedKeys,
+					false,
+				);
+			} else {
+				await this.applyProperties(target, result.properties);
+			}
 		}
 
 		if (!nameChanged) return;
