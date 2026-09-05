@@ -4,10 +4,6 @@
 
 Obsidian plugin for fast renaming: the current note, embeds under the cursor, and frontmatter properties in one panel.
 
-Migrated from a QuickAdd user script. Author: [PandaNocturne](https://github.com/PandaNocturne).
-
-**Requires Obsidian 1.8.7+**
-
 ## Features
 
 ### Rename
@@ -47,10 +43,10 @@ Settings → **General** → **Language**:
 
 ## Commands
 
-| Command | Default hotkey |
-| --- | --- |
-| Rename file or embed | `F2` |
-| Rename and edit all properties | `F5` |
+| Command                        | Default hotkey |
+| ------------------------------ | -------------- |
+| Rename file or embed           | `F2`         |
+| Rename and edit all properties | `F5`         |
 
 Hotkeys can be changed under **Settings → Hotkeys**.
 
@@ -89,4 +85,4 @@ Runs fully offline. No network requests, telemetry, or vault data uploaded.
 
 ## License
 
-See repository license file if present.
+[BSD Zero Clause License (0BSD)](./LICENSE) — Copyright (C) 2026 by PandaNocturne.

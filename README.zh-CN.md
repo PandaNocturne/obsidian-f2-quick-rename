@@ -4,10 +4,6 @@
 
 Obsidian 快速重命名插件：当前笔记、光标处嵌入/链接，以及 frontmatter 属性，都可在同一面板中完成。
 
-由 QuickAdd 用户脚本迁移而来。作者：[PandaNocturne](https://github.com/PandaNocturne)。
-
-**需要 Obsidian 1.8.7 及以上**
-
 ## 功能
 
 ### 重命名
@@ -47,10 +43,10 @@ Obsidian 快速重命名插件：当前笔记、光标处嵌入/链接，以及 
 
 ## 命令
 
-| 命令 | 默认快捷键 |
-| --- | --- |
-| 重命名文件或嵌入 | `F2` |
-| 重命名并编辑全部属性 | `F5` |
+| 命令                 | 默认快捷键 |
+| -------------------- | ---------- |
+| 重命名文件或嵌入     | `F2`     |
+| 重命名并编辑全部属性 | `F5`     |
 
 可在 **设置 → 快捷键** 中修改。
 
@@ -89,4 +85,4 @@ npm run build
 
 ## 许可
 
-以仓库中的许可文件为准（如有）。
+[BSD Zero Clause License (0BSD)](./LICENSE) — Copyright (C) 2026 by PandaNocturne.
