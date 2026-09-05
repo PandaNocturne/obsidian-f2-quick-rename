@@ -156,7 +156,6 @@ export class FullPropertiesPanel {
 			cls: 'f2-full-props-handle',
 			attr: {
 				draggable: 'true',
-				title: t('common.dragToReorder'),
 				'aria-label': t('common.dragToReorder'),
 			},
 		});
@@ -166,7 +165,6 @@ export class FullPropertiesPanel {
 			cls: 'f2-full-props-type',
 			attr: {
 				type: 'button',
-				title: t('properties.changeType'),
 				'aria-label': t('properties.changeType'),
 			},
 		});
@@ -214,7 +212,6 @@ export class FullPropertiesPanel {
 			cls: 'f2-full-props-remove',
 			attr: {
 				type: 'button',
-				title: t('properties.deleteProperty'),
 				'aria-label': t('properties.deleteProperty'),
 			},
 		});
@@ -541,7 +538,7 @@ export class FullPropertiesPanel {
 						.filter(Boolean)
 						.join(' '),
 					attr: {
-						title:
+						'aria-label':
 							classified.kind === 'text'
 								? t('tooltip.doubleClickToEdit')
 								: t('tooltip.clickIconOpenDoubleClickEdit'),
@@ -579,7 +576,7 @@ export class FullPropertiesPanel {
 				const beginEdit = (): void => {
 					if (chip.hasClass('is-editing')) return;
 					chip.addClass('is-editing');
-					chip.removeAttribute('title');
+					chip.removeAttribute('aria-label');
 					remove.hide();
 					prefix.hide();
 

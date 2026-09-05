@@ -431,7 +431,6 @@ export class RenamePromptModal extends Modal {
 			cls: 'clickable-icon f2-rename-header-action',
 			attr: {
 				type: 'button',
-				title: opts.label,
 				'aria-label': opts.label,
 			},
 		});
@@ -1111,7 +1110,7 @@ export class RenamePromptModal extends Modal {
 						.filter(Boolean)
 						.join(' '),
 					attr: {
-						title:
+						'aria-label':
 							classified.kind === 'text'
 								? t('tooltip.doubleClickToEdit')
 								: t('tooltip.clickIconOpenDoubleClickEdit'),
@@ -1133,7 +1132,7 @@ export class RenamePromptModal extends Modal {
 				const beginEdit = (): void => {
 					if (chip.hasClass('is-editing')) return;
 					chip.addClass('is-editing');
-					chip.removeAttribute('title');
+					chip.removeAttribute('aria-label');
 					remove.hide();
 
 					textEl.setAttr('contenteditable', 'true');
@@ -1355,7 +1354,6 @@ export class RenamePromptModal extends Modal {
 					? {
 							role: 'button',
 							tabindex: '0',
-							title: t('tooltip.clickToOpen'),
 							'aria-label': t('aria.openLabeled', {
 								label: opts.label,
 							}),
@@ -1411,7 +1409,6 @@ export class RenamePromptModal extends Modal {
 					: 'f2-rename-ext',
 				attr: opts.editableSuffix
 					? {
-							title: t('tooltip.doubleClickEditExtension'),
 							'aria-label': t('tooltip.doubleClickEditExtension'),
 						}
 					: undefined,

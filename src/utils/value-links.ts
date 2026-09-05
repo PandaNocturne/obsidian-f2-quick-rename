@@ -261,7 +261,6 @@ export function appendClassifiedChipPrefix(
 				: {
 						role: 'button',
 						tabindex: '0',
-						title: chipActionTitle(classified),
 						'aria-label': chipActionTitle(classified),
 					},
 	});

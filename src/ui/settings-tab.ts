@@ -538,7 +538,6 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		const handle = row.createDiv({
 			cls: 'f2-rename-setting-drag-handle',
 			attr: {
-				title: t('common.dragToReorder'),
 				'aria-label': t('common.dragToReorder'),
 			},
 		});
