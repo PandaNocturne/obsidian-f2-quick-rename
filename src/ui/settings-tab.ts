@@ -8,6 +8,7 @@ import {
 	isPropertyField,
 	isPropertyRow,
 	propertyTypeLabel,
+	propertyTypeSupportsHint,
 	type F2RenameSettings,
 	type PropertyFieldConfig,
 	type PropertyFieldType,
@@ -327,7 +328,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			const mapped = resolvePropertyFieldType(this.app, key);
 			if (mapped) {
 				field.type = mapped;
-				if (mapped !== 'list') {
+				if (!propertyTypeSupportsHint(mapped)) {
 					field.showHint = false;
 				}
 				if (mapped !== 'text') {
@@ -364,7 +365,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		select.addEventListener('change', () => {
 			void (async () => {
 				field.type = select.value as PropertyFieldType;
-				if (field.type !== 'list') {
+				if (!propertyTypeSupportsHint(field.type)) {
 					field.showHint = false;
 				}
 				if (field.type !== 'text') {
@@ -385,7 +386,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			},
 		).addClass('f2-rename-setting-alias');
 
-		if (field.type === 'list') {
+		if (propertyTypeSupportsHint(field.type)) {
 			const hintToggle = line.createDiv({
 				cls: 'f2-rename-setting-labeled f2-rename-setting-hint-toggle',
 			});

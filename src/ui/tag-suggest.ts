@@ -229,6 +229,8 @@ export class ListValueSuggest extends AbstractInputSuggest<string> {
 		getExcluded: () => Iterable<string>,
 		onChoose: (value: string) => void,
 		sourcePath = '',
+		/** When false, keep the chosen value in the input (single-select). */
+		private readonly clearOnChoose = true,
 	) {
 		super(app, inputEl);
 		this.inputEl = inputEl;
@@ -295,7 +297,11 @@ export class ListValueSuggest extends AbstractInputSuggest<string> {
 			return;
 		}
 		this.onChoose(value);
-		this.setValue('');
+		if (this.clearOnChoose) {
+			this.setValue('');
+		} else {
+			this.setValue(value);
+		}
 		this.close();
 	}
 
@@ -585,7 +591,7 @@ export function shouldSuggestTags(key: string): boolean {
  */
 export function resolvePropertyTypeAttr(
 	key: string,
-	type: 'checkbox' | 'date' | 'datetime' | 'list' | 'number' | 'text',
+	type: PropertyFieldType,
 ): string {
 	const normalized = key.trim().toLowerCase();
 	if (normalized === 'tags') return 'tags';
@@ -601,6 +607,7 @@ export function resolvePropertyTypeAttr(
 			return 'number';
 		case 'list':
 			return 'multitext';
+		case 'select':
 		case 'text':
 		default:
 			return 'text';

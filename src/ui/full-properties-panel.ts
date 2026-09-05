@@ -316,6 +316,9 @@ export class FullPropertiesPanel {
 			case 'list':
 				this.renderListEditor(host, field);
 				break;
+			case 'select':
+				this.renderSelectEditor(host, field);
+				break;
 			case 'text':
 			default: {
 				const text =
@@ -436,6 +439,47 @@ export class FullPropertiesPanel {
 				this.setValue(key, value, false);
 			},
 		});
+	}
+
+	private renderSelectEditor(
+		host: HTMLElement,
+		field: PropertyFieldState,
+	): void {
+		const key = field.key;
+		const input = host.createEl('input', {
+			type: 'text',
+			cls: 'f2-full-props-input f2-full-props-select-input',
+			attr: {
+				spellcheck: 'false',
+				autocomplete: 'off',
+				placeholder: t('properties.noValuePlaceholder'),
+			},
+		});
+		const current = this.values[key];
+		input.value = current == null ? '' : String(current);
+		input.addEventListener('input', () => {
+			this.setValue(key, input.value, false);
+		});
+		input.addEventListener('change', () => {
+			void this.persist(true);
+		});
+
+		if (field.showHint) {
+			new ListValueSuggest(
+				this.app,
+				input,
+				key,
+				() => [],
+				(value) => {
+					input.value = value;
+					this.setValue(key, value, true);
+				},
+				this.sourcePath,
+				false,
+			);
+		} else {
+			this.attachWikiLinkSuggest(input, key);
+		}
 	}
 
 	private renderListEditor(
@@ -756,7 +800,7 @@ export class FullPropertiesPanel {
 		const next = readPropertyValue(raw, type);
 		field.value = next;
 		this.values[key] = next;
-		field.showHint = type === 'list';
+		field.showHint = type === 'list' || type === 'select';
 		field.multiline = type === 'text' && isMultilineTextValue(next);
 		this.renderList();
 		void this.persist(true);

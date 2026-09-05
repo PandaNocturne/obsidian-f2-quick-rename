@@ -70,6 +70,7 @@ export function readPropertyValue(
 			return asStringList(raw);
 		case 'date':
 		case 'datetime':
+		case 'select':
 		case 'text':
 		default:
 			// Arrays (e.g. former list properties) coerce to a joined string.
@@ -105,6 +106,7 @@ export function normalizePropertyValue(
 		}
 		case 'date':
 		case 'datetime':
+		case 'select':
 		case 'text': {
 			const text = Array.isArray(value)
 				? value

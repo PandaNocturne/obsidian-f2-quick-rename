@@ -1,13 +1,14 @@
 import type { LocalePreference } from './i18n';
 import { t } from './i18n';
 
-/** Obsidian-aligned property types (属性类型). */
+/** Obsidian-aligned property types (属性类型), plus plugin `select`. */
 export type PropertyFieldType =
 	| 'checkbox'
 	| 'date'
 	| 'datetime'
 	| 'list'
 	| 'number'
+	| 'select'
 	| 'text';
 
 export interface PropertyTypeOption {
@@ -23,6 +24,7 @@ export const PROPERTY_TYPE_OPTIONS: PropertyTypeOption[] = [
 	{ type: 'datetime', icon: 'clock' },
 	{ type: 'list', icon: 'list' },
 	{ type: 'number', icon: 'binary' },
+	{ type: 'select', icon: 'circle-dot' },
 	{ type: 'text', icon: 'align-left' },
 ];
 
@@ -38,9 +40,16 @@ export function propertyTypeLabel(type: PropertyFieldType): string {
 			return t('propertyType.list');
 		case 'number':
 			return t('propertyType.number');
+		case 'select':
+			return t('propertyType.select');
 		case 'text':
 			return t('propertyType.text');
 	}
+}
+
+/** List and select can show vault-value suggestions. */
+export function propertyTypeSupportsHint(type: PropertyFieldType): boolean {
+	return type === 'list' || type === 'select';
 }
 
 export interface PropertyFieldConfig {
@@ -51,7 +60,7 @@ export interface PropertyFieldConfig {
 	/** Display alias in the rename panel; defaults to key */
 	label?: string;
 	/**
-	 * Whether list inputs show vault value suggestions (dropdown).
+	 * Whether list/select inputs show vault value suggestions (dropdown).
 	 * Defaults to false.
 	 */
 	showHint?: boolean;
@@ -210,15 +219,17 @@ export function normalizePropertyFieldConfig(
 	raw: PropertyFieldConfig | Record<string, unknown>,
 ): PropertyFieldConfig {
 	const record = raw as Record<string, unknown>;
+	const rawType = typeof record.type === 'string' ? record.type : 'text';
+	const type = PROPERTY_TYPE_OPTIONS.some((opt) => opt.type === rawType)
+		? (rawType as PropertyFieldType)
+		: 'text';
 	return {
 		kind: 'field',
 		key: typeof record.key === 'string' ? record.key : '',
-		type: (typeof record.type === 'string'
-			? record.type
-			: 'text') as PropertyFieldType,
+		type,
 		label: typeof record.label === 'string' ? record.label : '',
-		showHint: record.showHint === true,
-		multiline: record.multiline === true,
+		showHint: record.showHint === true && propertyTypeSupportsHint(type),
+		multiline: record.multiline === true && type === 'text',
 	};
 }
 

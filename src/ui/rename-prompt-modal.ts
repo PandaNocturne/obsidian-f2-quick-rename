@@ -789,6 +789,9 @@ export class RenamePromptModal extends Modal {
 			case 'list':
 				this.renderListField(parent, field, typeMeta?.icon);
 				break;
+			case 'select':
+				this.renderSelectField(parent, field, typeMeta?.icon);
+				break;
 			case 'number':
 				this.renderNumberField(parent, field, typeMeta?.icon);
 				break;
@@ -953,6 +956,70 @@ export class RenamePromptModal extends Modal {
 		});
 		this.bindEscape(input);
 		if (inputType === 'text') {
+			this.attachWikiLinkSuggest(input, (value) => {
+				this.propertyValues[field.key] = value;
+				this.schedulePersistProperties();
+			});
+		}
+	}
+
+	private renderSelectField(
+		parent: HTMLElement,
+		field: PropertyFieldState,
+		icon?: string,
+	): void {
+		const row = this.createPropertyRow(parent, field, icon);
+		const control = row.createDiv({ cls: 'f2-rename-control' });
+		const input = control.createEl('input', {
+			type: 'text',
+			cls: 'f2-rename-input f2-rename-select-input',
+			attr: {
+				id: `f2-prop-${field.key}`,
+				spellcheck: 'false',
+				autocomplete: 'off',
+				...(field.showHint ? { placeholder: field.label } : {}),
+			},
+		});
+		const current = this.propertyValues[field.key];
+		input.value = current == null ? '' : String(current);
+
+		let suggestPicked = false;
+		input.addEventListener('input', () => {
+			this.propertyValues[field.key] = input.value;
+			this.schedulePersistProperties();
+		});
+		input.addEventListener('change', () => {
+			void this.persistProperties(true);
+		});
+		this.bindEscape(input);
+
+		if (field.showHint) {
+			new ListValueSuggest(
+				this.app,
+				input,
+				field.key,
+				() => [],
+				(value) => {
+					suggestPicked = true;
+					input.value = value;
+					this.propertyValues[field.key] = value;
+					this.schedulePersistProperties();
+				},
+				this.getSuggestSourcePath(),
+				false,
+			);
+			input.addEventListener('keydown', (evt) => {
+				if (evt.key === 'Enter') {
+					window.setTimeout(() => {
+						if (suggestPicked) {
+							suggestPicked = false;
+							evt.preventDefault();
+							evt.stopPropagation();
+						}
+					}, 0);
+				}
+			});
+		} else {
 			this.attachWikiLinkSuggest(input, (value) => {
 				this.propertyValues[field.key] = value;
 				this.schedulePersistProperties();

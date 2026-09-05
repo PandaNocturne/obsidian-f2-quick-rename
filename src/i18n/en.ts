@@ -70,6 +70,7 @@ export const en = {
 	'propertyType.datetime': 'Date & time',
 	'propertyType.list': 'List',
 	'propertyType.number': 'Number',
+	'propertyType.select': 'Select',
 	'propertyType.text': 'Text',
 
 	'properties.changeType': 'Change type',
@@ -119,7 +120,7 @@ export const en = {
 	'settings.propertyFields.defaultCollapsed.desc':
 		'When enabled, F2 hides configured properties until you click Properties. F5 full properties always stay expanded.',
 	'settings.propertyFields.intro':
-		'Configure properties editable under “Properties” in the rename panel. Drag to reorder; drop properties into a “Side-by-side group” to show them on one row. For lists with “Suggest” enabled, existing vault values for that property appear as dropdown suggestions.',
+		'Configure properties editable under “Properties” in the rename panel. Drag to reorder; drop properties into a “Side-by-side group” to show them on one row. For lists or selects with “Suggest” enabled, existing vault values for that property appear as dropdown suggestions (select picks one value).',
 	'settings.propertyFields.addProperty': 'Add property',
 	'settings.propertyFields.addSeparator': 'Add separator',
 	'settings.propertyFields.addRow': 'Add side-by-side group',

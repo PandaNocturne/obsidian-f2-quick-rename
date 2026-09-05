@@ -64,6 +64,7 @@ export const zhCN: Record<TranslationKey, string> = {
 	'propertyType.datetime': '日期 & 时间',
 	'propertyType.list': '列表',
 	'propertyType.number': '数字',
+	'propertyType.select': '单选',
 	'propertyType.text': '文本',
 
 	'properties.changeType': '更改类型',
@@ -112,7 +113,7 @@ export const zhCN: Record<TranslationKey, string> = {
 	'settings.propertyFields.defaultCollapsed.desc':
 		'开启后，F2 默认隐藏配置属性，需点击「属性」才显示。F5 全量属性始终展开。',
 	'settings.propertyFields.intro':
-		'配置重命名面板「属性」中可编辑的属性。拖动调整顺序；可将属性拖入「并排容器」使其在同一行显示。列表开启「提示」后会从库中该属性已有值弹出下拉建议。',
+		'配置重命名面板「属性」中可编辑的属性。拖动调整顺序；可将属性拖入「并排容器」使其在同一行显示。列表 / 单选开启「提示」后会从库中该属性已有值弹出下拉建议（单选为选一即填）。',
 	'settings.propertyFields.addProperty': '添加属性',
 	'settings.propertyFields.addSeparator': '添加分隔符',
 	'settings.propertyFields.addRow': '添加并排容器',
