@@ -240,3 +240,57 @@ export function displayExtensionSuffix(
 	if (dot < 0) return '';
 	return leaf.slice(dot);
 }
+
+/** High-level kinds shown in the F2 rename header icon. */
+export type RenameFileKind =
+	| 'url'
+	| 'document'
+	| 'canvas'
+	| 'excalidraw'
+	| 'base'
+	| 'attachment';
+
+/**
+ * Classify a rename target for the header icon
+ * (文档 / Canvas / Excalidraw / Bases / 附件).
+ */
+export function resolveRenameFileKind(
+	file: TFile | null | undefined,
+	opts: { mode?: 'file' | 'url'; extension?: string } = {},
+): RenameFileKind {
+	if (opts.mode === 'url') return 'url';
+
+	if (file && isExcalidrawFile(file)) return 'excalidraw';
+
+	const suffix = (opts.extension ?? '').toLowerCase();
+	if (suffix.includes('excalidraw')) return 'excalidraw';
+
+	const ext = (
+		file?.extension ||
+		suffix.replace(/^\./, '').split('.').pop() ||
+		''
+	).toLowerCase();
+
+	if (ext === 'canvas') return 'canvas';
+	if (ext === 'base') return 'base';
+	if (ext === 'md' || ext === '') return 'document';
+	return 'attachment';
+}
+
+/** Lucide / Obsidian icon id for a rename file kind. */
+export function renameFileKindIcon(kind: RenameFileKind): string {
+	switch (kind) {
+		case 'url':
+			return 'link';
+		case 'document':
+			return 'file-text';
+		case 'canvas':
+			return 'layout-dashboard';
+		case 'excalidraw':
+			return 'pencil-ruler';
+		case 'base':
+			return 'sheets-in-box';
+		case 'attachment':
+			return 'paperclip';
+	}
+}

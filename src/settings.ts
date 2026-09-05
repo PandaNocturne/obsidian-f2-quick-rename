@@ -1,3 +1,6 @@
+import type { LocalePreference } from './i18n';
+import { t } from './i18n';
+
 /** Obsidian-aligned property types (属性类型). */
 export type PropertyFieldType =
 	| 'checkbox'
@@ -9,20 +12,36 @@ export type PropertyFieldType =
 
 export interface PropertyTypeOption {
 	type: PropertyFieldType;
-	label: string;
 	/** Lucide icon name used by setIcon */
 	icon: string;
 }
 
-/** Same labels as Obsidian's property type menu. */
+/** Same icons as Obsidian's property type menu; labels via `propertyTypeLabel`. */
 export const PROPERTY_TYPE_OPTIONS: PropertyTypeOption[] = [
-	{ type: 'checkbox', label: '复选框', icon: 'check-square' },
-	{ type: 'date', label: '日期', icon: 'calendar' },
-	{ type: 'datetime', label: '日期 & 时间', icon: 'clock' },
-	{ type: 'list', label: '列表', icon: 'list' },
-	{ type: 'number', label: '数字', icon: 'binary' },
-	{ type: 'text', label: '文本', icon: 'align-left' },
+	{ type: 'checkbox', icon: 'check-square' },
+	{ type: 'date', icon: 'calendar' },
+	{ type: 'datetime', icon: 'clock' },
+	{ type: 'list', icon: 'list' },
+	{ type: 'number', icon: 'binary' },
+	{ type: 'text', icon: 'align-left' },
 ];
+
+export function propertyTypeLabel(type: PropertyFieldType): string {
+	switch (type) {
+		case 'checkbox':
+			return t('propertyType.checkbox');
+		case 'date':
+			return t('propertyType.date');
+		case 'datetime':
+			return t('propertyType.datetime');
+		case 'list':
+			return t('propertyType.list');
+		case 'number':
+			return t('propertyType.number');
+		case 'text':
+			return t('propertyType.text');
+	}
+}
 
 export interface PropertyFieldConfig {
 	kind?: 'field';
@@ -79,6 +98,11 @@ export type PropertyPanelItem =
 	| { kind: 'row'; fields: PropertyFieldState[] };
 
 export interface F2RenameSettings {
+	/**
+	 * Plugin UI language.
+	 * `system` follows Obsidian’s language; otherwise force zh-CN or en.
+	 */
+	locale: LocalePreference;
 	/** When the cursor is on a wiki/markdown embed, rename that file. */
 	renameEmbeds: boolean;
 	/**
@@ -99,6 +123,11 @@ export interface F2RenameSettings {
 	 * (no need to click confirm for attributes).
 	 */
 	autoSaveProperties: boolean;
+	/**
+	 * When true, the properties section in the rename panel starts collapsed.
+	 * F5 full-properties mode still opens expanded.
+	 */
+	propertiesDefaultCollapsed: boolean;
 	/**
 	 * Double-click the extension suffix in the rename panel to edit it.
 	 * Defaults to false.
@@ -134,6 +163,7 @@ export const DEFAULT_PROPERTY_FIELDS: PropertySettingsItem[] = [
 ];
 
 export const DEFAULT_SETTINGS: F2RenameSettings = {
+	locale: 'system',
 	renameEmbeds: true,
 	editEmbedAlias: true,
 	renameHeadings: true,
@@ -141,6 +171,7 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	copyNameToClipboard: true,
 	editProperties: true,
 	autoSaveProperties: true,
+	propertiesDefaultCollapsed: true,
 	editExtension: false,
 	propertyFields: DEFAULT_PROPERTY_FIELDS.map((item) =>
 		clonePropertySettingsItem(item),

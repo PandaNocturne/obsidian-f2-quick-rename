@@ -1,4 +1,5 @@
 import { App, Modal, Notice, TFile, setIcon } from 'obsidian';
+import { t } from '../i18n';
 import type {
 	PropertyFieldState,
 	PropertyPanelItem,
@@ -7,10 +8,17 @@ import type {
 import { PROPERTY_TYPE_OPTIONS } from '../settings';
 import {
 	classifyValue,
+	copyTextToClipboard,
+	fileToWikilink,
 	openClassifiedValue,
 	openRelatedFile,
+	revealFileInSystemFolder,
 	type ClassifiedValue,
 } from '../utils/value-links';
+import {
+	renameFileKindIcon,
+	resolveRenameFileKind,
+} from '../utils/embed';
 import { FullPropertiesPanel } from './full-properties-panel';
 import {
 	ListValueSuggest,
@@ -45,7 +53,6 @@ export interface RenamePromptOptions {
 	/** Show and prefill the alias / title field. */
 	showAlias?: boolean;
 	alias?: string | null;
-	nameLabel?: string;
 	aliasLabel?: string;
 	/**
 	 * File extension shown after the name input (e.g. `.md`, `.png`).
@@ -56,7 +63,7 @@ export interface RenamePromptOptions {
 	allowEditExtension?: boolean;
 	/** Source path used to resolve wiki / note links in list chips. */
 	sourcePath?: string;
-	/** Related vault file for “文件” (click label icon to open). */
+	/** Related vault file (click label icon to open). */
 	relatedFile?: TFile | null;
 	/** Document properties / separators shown under the collapsible “更多” section. */
 	properties?: PropertyPanelItem[];
@@ -149,11 +156,17 @@ export class RenamePromptModal extends Modal {
 
 		const header = contentEl.createDiv({ cls: 'f2-rename-header' });
 		const iconWrap = header.createDiv({ cls: 'f2-rename-icon' });
-		setIcon(iconWrap, this.options.mode === 'url' ? 'link' : 'pencil');
+		const fileKind = resolveRenameFileKind(this.options.relatedFile, {
+			mode: this.options.mode ?? 'file',
+			extension: this.options.extension ?? this.extensionValue,
+		});
+		iconWrap.setAttr('data-file-kind', fileKind);
+		setIcon(iconWrap, renameFileKindIcon(fileKind));
 		header.createEl('h2', {
 			text: this.titleText,
 			cls: 'f2-rename-title',
 		});
+		this.renderHeaderActions(header);
 
 		const body = contentEl.createDiv({ cls: 'f2-rename-body' });
 		const form = body.createDiv({ cls: 'f2-rename-form' });
@@ -161,13 +174,12 @@ export class RenamePromptModal extends Modal {
 		const isUrl = this.options.mode === 'url';
 		const showAlias = this.options.showAlias ?? isUrl;
 		const relatedFile = this.options.relatedFile ?? null;
-		const isRelatedDoc = Boolean(relatedFile) && !isUrl;
 
 		const nameField = {
 			id: 'f2-rename-input',
-			label:
-				this.options.nameLabel ??
-				(isUrl ? '链接' : isRelatedDoc ? '文件' : '文件名'),
+			label: isUrl
+				? t('modal.field.urlLabel')
+				: t('modal.field.filenameLabel'),
 			value: this.defaultValue,
 			suffix: isUrl ? undefined : this.options.extension,
 			editableSuffix: Boolean(
@@ -181,7 +193,7 @@ export class RenamePromptModal extends Modal {
 				? () => {
 						const url = this.value.trim();
 						if (!url) {
-							new Notice('URL 为空');
+							new Notice(t('notice.urlEmpty'));
 							return;
 						}
 						void openClassifiedValue(
@@ -201,17 +213,20 @@ export class RenamePromptModal extends Modal {
 			? {
 					id: 'f2-rename-alias-input',
 					label:
-						this.options.aliasLabel ?? (isUrl ? '标题' : '别名'),
+						this.options.aliasLabel ??
+						(isUrl
+							? t('modal.aliasLabel.title')
+							: t('modal.aliasLabel.alias')),
 					value: this.aliasValue,
 					placeholder: isUrl
-						? '链接显示标题'
-						: '可选，对应 | 后的显示名',
+						? t('modal.field.linkTitlePlaceholder')
+						: t('modal.field.aliasPlaceholder'),
 					icon: isUrl ? 'heading' : 'quote',
 					onIconClick: isUrl
 						? () => {
 								const url = this.value.trim();
 								if (!url) {
-									new Notice('URL 为空');
+									new Notice(t('notice.urlEmpty'));
 									return;
 								}
 								void openClassifiedValue(
@@ -268,19 +283,19 @@ export class RenamePromptModal extends Modal {
 				cls: 'f2-rename-btn-add-prop-icon',
 			});
 			setIcon(addIcon, 'plus');
-			addBtn.createSpan({ text: '添加属性' });
+			addBtn.createSpan({ text: t('modal.addProperty') });
 			addBtn.addEventListener('click', () => this.handleAddProperty());
 		}
 
 		const cancelBtn = right.createEl('button', {
-			text: '取消',
+			text: t('common.cancel'),
 			cls: 'f2-rename-btn',
 			attr: { type: 'button' },
 		});
 		cancelBtn.addEventListener('click', () => this.submit(null));
 
 		const confirmBtn = right.createEl('button', {
-			text: '确认',
+			text: t('common.confirm'),
 			cls: 'f2-rename-btn f2-rename-btn-primary mod-cta',
 			attr: { type: 'button' },
 		});
@@ -322,6 +337,112 @@ export class RenamePromptModal extends Modal {
 		}
 	}
 
+	private renderHeaderActions(header: HTMLElement): void {
+		const actions = header.createDiv({ cls: 'f2-rename-header-actions' });
+		const isUrl = this.options.mode === 'url';
+		const file = this.options.relatedFile ?? null;
+
+		if (isUrl) {
+			this.createHeaderActionButton(actions, {
+				icon: 'external-link',
+				label: t('tooltip.openLink'),
+				onClick: () => {
+					const url = this.value.trim();
+					if (!url) {
+						new Notice(t('notice.urlEmpty'));
+						return;
+					}
+					void openClassifiedValue(
+						this.app,
+						classifyValue(this.app, url),
+						this.options.sourcePath ?? '',
+					);
+				},
+			});
+			this.createHeaderActionButton(actions, {
+				icon: 'copy',
+				label: t('header.copyWiki'),
+				onClick: () => {
+					void this.copyHeaderText(
+						this.value.trim(),
+						t('notice.copiedText'),
+					);
+				},
+			});
+			return;
+		}
+
+		this.createHeaderActionButton(actions, {
+			icon: 'folder-open',
+			label: t('header.openFolder'),
+			disabled: !file,
+			onClick: () => {
+				if (!file) {
+					new Notice(t('notice.noRelatedFile'));
+					return;
+				}
+				if (!revealFileInSystemFolder(this.app, file)) {
+					new Notice(t('notice.folderRevealUnavailable'));
+				}
+			},
+		});
+
+		this.createHeaderActionButton(actions, {
+			icon: 'copy',
+			label: t('header.copyWiki'),
+			disabled: !file,
+			onClick: () => {
+				if (!file) {
+					new Notice(t('notice.noRelatedFile'));
+					return;
+				}
+				const wiki = fileToWikilink(
+					this.app,
+					file,
+					this.options.sourcePath ?? file.path,
+				);
+				void this.copyHeaderText(wiki, t('notice.copiedWiki'));
+			},
+		});
+	}
+
+	private createHeaderActionButton(
+		parent: HTMLElement,
+		opts: {
+			icon: string;
+			label: string;
+			disabled?: boolean;
+			onClick: () => void;
+		},
+	): void {
+		const btn = parent.createEl('button', {
+			cls: 'clickable-icon f2-rename-header-action',
+			attr: {
+				type: 'button',
+				title: opts.label,
+				'aria-label': opts.label,
+			},
+		});
+		if (opts.disabled) {
+			btn.disabled = true;
+			btn.addClass('is-disabled');
+		}
+		setIcon(btn, opts.icon);
+		btn.addEventListener('click', (evt) => {
+			evt.preventDefault();
+			if (btn.disabled) return;
+			opts.onClick();
+		});
+	}
+
+	private async copyHeaderText(
+		text: string,
+		successNotice = t('notice.copiedWiki'),
+	): Promise<void> {
+		const ok = await copyTextToClipboard(text);
+		new Notice(ok ? successNotice : t('notice.copyFailed'));
+	}
+
 	private renderFullPropertiesSection(
 		parent: HTMLElement,
 		fields: PropertyFieldState[],
@@ -329,7 +450,7 @@ export class RenamePromptModal extends Modal {
 		const details = parent.createEl('details', {
 			cls: 'f2-rename-more f2-rename-more-full',
 		});
-		details.open = this.options.propertiesOpen !== false;
+		details.open = Boolean(this.options.propertiesOpen);
 		const summary = details.createEl('summary', {
 			cls: 'f2-rename-more-summary',
 		});
@@ -337,7 +458,7 @@ export class RenamePromptModal extends Modal {
 			cls: 'f2-rename-more-chevron',
 		});
 		setIcon(summaryIcon, 'chevron-right');
-		summary.createSpan({ text: '属性' });
+		summary.createSpan({ text: t('modal.section.properties') });
 
 		const panel = details.createDiv({ cls: 'f2-rename-more-body' });
 		this.fullPropertiesPanel = new FullPropertiesPanel({
@@ -374,7 +495,7 @@ export class RenamePromptModal extends Modal {
 			return;
 		}
 
-		new Notice('当前面板不支持添加属性');
+		new Notice(t('notice.addPropertyUnsupported'));
 	}
 
 	private renderMoreSection(
@@ -394,7 +515,7 @@ export class RenamePromptModal extends Modal {
 			cls: 'f2-rename-more-chevron',
 		});
 		setIcon(summaryIcon, 'chevron-right');
-		summary.createSpan({ text: '更多' });
+		summary.createSpan({ text: t('modal.section.more') });
 
 		const panel = details.createDiv({ cls: 'f2-rename-more-body' });
 		const form = panel.createDiv({ cls: 'f2-rename-form' });
@@ -705,8 +826,8 @@ export class RenamePromptModal extends Modal {
 					attr: {
 						title:
 							classified.kind === 'text'
-								? '双击编辑'
-								: '点击图标打开，双击编辑',
+								? t('tooltip.doubleClickToEdit')
+								: t('tooltip.clickIconOpenDoubleClickEdit'),
 						'data-property-type': field.key,
 						'data-value-kind': classified.kind,
 					},
@@ -797,7 +918,7 @@ export class RenamePromptModal extends Modal {
 							);
 							if (duplicate) {
 								closed = false;
-								new Notice('列表中已存在相同项');
+								new Notice(t('notice.duplicateListItem'));
 								textEl.focus();
 								return;
 							}
@@ -846,7 +967,7 @@ export class RenamePromptModal extends Modal {
 
 				const remove = chip.createEl('button', {
 					cls: 'f2-rename-chip-remove',
-					attr: { type: 'button', 'aria-label': '移除' },
+					attr: { type: 'button', 'aria-label': t('common.remove') },
 				});
 				setIcon(remove, 'x');
 				remove.addEventListener('click', (evt) => {
@@ -980,8 +1101,10 @@ export class RenamePromptModal extends Modal {
 					? {
 							role: 'button',
 							tabindex: '0',
-							title: '点击打开',
-							'aria-label': `打开${opts.label}`,
+							title: t('tooltip.clickToOpen'),
+							'aria-label': t('aria.openLabeled', {
+								label: opts.label,
+							}),
 						}
 					: undefined,
 			});
@@ -1034,8 +1157,8 @@ export class RenamePromptModal extends Modal {
 					: 'f2-rename-ext',
 				attr: opts.editableSuffix
 					? {
-							title: '双击修改扩展名',
-							'aria-label': '双击修改扩展名',
+							title: t('tooltip.doubleClickEditExtension'),
+							'aria-label': t('tooltip.doubleClickEditExtension'),
 						}
 					: undefined,
 			});
@@ -1220,11 +1343,11 @@ export function promptRename(
 function chipActionTitle(value: ClassifiedValue): string {
 	switch (value.kind) {
 		case 'tag':
-			return '打开标签搜索';
+			return t('tooltip.openTagSearch');
 		case 'url':
-			return '打开链接';
+			return t('tooltip.openLink');
 		case 'document':
-			return '打开文件';
+			return t('tooltip.openFile');
 		default:
 			return '';
 	}

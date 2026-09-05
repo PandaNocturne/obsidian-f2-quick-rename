@@ -1,4 +1,5 @@
 import { App, Editor, Notice, TFile, normalizePath } from 'obsidian';
+import { t } from './i18n';
 import type F2RenamePlugin from './main';
 import { promptRename } from './ui/rename-prompt-modal';
 import {
@@ -34,7 +35,7 @@ export class RenameService {
 		const { settings } = this.plugin;
 		const file = this.app.workspace.getActiveFile();
 		if (!file) {
-			new Notice('没有打开的文件');
+			new Notice(t('notice.noOpenFile'));
 			return;
 		}
 
@@ -87,11 +88,11 @@ export class RenameService {
 	async runFullProperties(): Promise<void> {
 		const file = this.app.workspace.getActiveFile();
 		if (!file) {
-			new Notice('没有打开的文件');
+			new Notice(t('notice.noOpenFile'));
 			return;
 		}
 		if (file.extension !== 'md') {
-			new Notice('仅支持 Markdown 笔记的全属性面板');
+			new Notice(t('notice.fullPropertiesMarkdownOnly'));
 			return;
 		}
 		await this.renameTargetFile(file, false, { fullProperties: true });
@@ -126,20 +127,19 @@ export class RenameService {
 		editor: Editor | null,
 	): Promise<void> {
 		if (!editor) {
-			new Notice('无法编辑链接：当前没有可用的编辑器');
+			new Notice(t('notice.cannotEditLinkNoEditor'));
 			return;
 		}
 
 		const result = await promptRename(
 			this.app,
-			'🔗编辑链接',
+			t('modal.editLink.title'),
 			embed.linkpathRaw,
 			{
 				mode: 'url',
 				showAlias: true,
 				alias: embed.alias ?? '',
-				nameLabel: '链接',
-				aliasLabel: '标题',
+				aliasLabel: t('modal.aliasLabel.title'),
 				sourcePath: this.app.workspace.getActiveFile()?.path ?? '',
 			},
 		);
@@ -148,7 +148,7 @@ export class RenameService {
 		const newUrl = result.name.trim();
 		const newTitle = normalizeSpaces(result.alias ?? '');
 		if (!newUrl) {
-			new Notice('URL 不能为空');
+			new Notice(t('notice.urlCannotBeEmpty'));
 			return;
 		}
 
@@ -180,7 +180,7 @@ export class RenameService {
 
 		const kindLabel = target
 			? this.describeFileKind(target, true, excalidraw)
-			: '🗳重命名嵌入链接';
+			: t('modal.renameEmbedLink.title');
 
 		const properties =
 			canEditProperties && target
@@ -198,7 +198,6 @@ export class RenameService {
 			mode: 'file',
 			showAlias,
 			alias: embed.alias ?? '',
-			nameLabel: target ? '文件' : '文件名',
 			extension: displayExtensionSuffix(
 				target,
 				excalidraw,
@@ -209,6 +208,7 @@ export class RenameService {
 			sourcePath:
 				this.app.workspace.getActiveFile()?.path ?? target?.path ?? '',
 			properties,
+			propertiesOpen: !settings.propertiesDefaultCollapsed,
 			autoSaveProperties,
 			onPropertiesChange:
 				autoSaveProperties && target
@@ -233,12 +233,12 @@ export class RenameService {
 			});
 			this.replaceEmbedText(editor, embed.raw, rebuilt);
 		} else if (aliasChanged && !editor) {
-			new Notice('无法编辑别名：当前没有可用的编辑器');
+			new Notice(t('notice.cannotEditAliasNoEditor'));
 		}
 
 		if (!target) {
 			if (!aliasChanged) {
-				new Notice(`❌未找到文件: ${embed.linkpath}`);
+				new Notice(t('notice.fileNotFound', { path: embed.linkpath }));
 			}
 			return;
 		}
@@ -311,13 +311,13 @@ export class RenameService {
 
 		const kindLabel = this.describeFileKind(target, isEmbed, excalidraw);
 		const result = await promptRename(this.app, kindLabel, displayBase, {
-			nameLabel: isEmbed ? '文件' : '文件名',
 			extension: displayExtensionSuffix(target, excalidraw),
 			allowEditExtension: settings.editExtension,
 			relatedFile: target,
 			sourcePath: target.path,
 			fullProperties: fullPropertyFields,
-			propertiesOpen: useFullList,
+			propertiesOpen:
+				useFullList || !settings.propertiesDefaultCollapsed,
 			propertiesMergeWrites: mergeWrites,
 			autoSaveProperties,
 			onFullPropertiesChange: autoSaveProperties
@@ -395,7 +395,7 @@ export class RenameService {
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
-			new Notice(`写入属性失败: ${message}`);
+			new Notice(t('notice.writePropertiesFailed', { message }));
 		}
 	}
 
@@ -421,7 +421,7 @@ export class RenameService {
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
-			new Notice(`写入属性失败: ${message}`);
+			new Notice(t('notice.writePropertiesFailed', { message }));
 		}
 	}
 
@@ -451,7 +451,9 @@ export class RenameService {
 					companionNewPath,
 				);
 			} catch {
-				new Notice(`连带重命名失败: ${companion.name}`);
+				new Notice(
+					t('notice.companionRenameFailed', { name: companion.name }),
+				);
 			}
 		}
 	}
@@ -479,7 +481,7 @@ export class RenameService {
 		const line = editor.getLine(lineNo);
 		const at = line.indexOf(raw);
 		if (at < 0) {
-			new Notice('未能在编辑器中定位嵌入链接');
+			new Notice(t('notice.embedLinkNotLocated'));
 			return;
 		}
 		editor.replaceRange(
@@ -522,14 +524,14 @@ export class RenameService {
 	): string {
 		if (excalidraw) {
 			return isEmbed
-				? '🗳重命名嵌入的 Excalidraw 文件'
-				: '🎨重命名 Excalidraw 文件';
+				? t('modal.renameEmbeddedExcalidraw.title')
+				: t('modal.renameExcalidraw.title');
 		}
 		if (isEmbed) {
-			const ext = file.extension ? `.${file.extension}` : '';
-			return `🗳重命名嵌入的 ${ext || '文件'}`;
+			const ext = file.extension ? `.${file.extension}` : t('common.file');
+			return t('modal.renameEmbeddedFile.title', { ext });
 		}
-		return '📄重命名当前文档';
+		return t('modal.renameFile.title');
 	}
 
 	/**
