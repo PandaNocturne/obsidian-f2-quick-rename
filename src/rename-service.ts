@@ -32,13 +32,21 @@ export class RenameService {
 
 	async run(): Promise<void> {
 		const { settings } = this.plugin;
-		const file = this.app.workspace.getActiveFile();
+		const file = this.resolveCommandTargetFile();
 		if (!file) {
 			new Notice(t('notice.noOpenFile'));
 			return;
 		}
 
-		const { selection, editor } = this.getSelection();
+		// Excalidraw (and Canvas) host an interactive embed leaf/editor that can
+		// steal activeEditor / getActiveFile even when the embed is not being
+		// edited. Always rename the host drawing/canvas file in that case.
+		if (this.isEmbedHostView()) {
+			await this.renameTargetFile(file, false);
+			return;
+		}
+
+		const { selection, editor, editorFile } = this.getSelection();
 
 		if (selection) {
 			if (
@@ -54,7 +62,14 @@ export class RenameService {
 				return;
 			}
 
-			if (settings.renameEmbeds) {
+			// Only treat wiki/markdown embeds when the selection comes from the
+			// same note as the command target (not a nested embed editor).
+			if (
+				settings.renameEmbeds &&
+				editor &&
+				editorFile &&
+				editorFile.path === file.path
+			) {
 				const embed = matchSelectionEmbed(selection);
 				if (embed) {
 					if (isWebUrl(embed.linkpath)) {
@@ -85,7 +100,7 @@ export class RenameService {
 	 * (add / edit / delete / reorder), bound to F5.
 	 */
 	async runFullProperties(): Promise<void> {
-		const file = this.app.workspace.getActiveFile();
+		const file = this.resolveCommandTargetFile();
 		if (!file) {
 			new Notice(t('notice.noOpenFile'));
 			return;
@@ -97,11 +112,57 @@ export class RenameService {
 		await this.renameTargetFile(file, false, { fullProperties: true });
 	}
 
-	private getSelection(): { selection: string; editor: Editor | null } {
+	/**
+	 * File owned by the active leaf's view. Prefer this over getActiveFile()
+	 * so Excalidraw interactive embeds do not become the rename target.
+	 */
+	private resolveCommandTargetFile(): TFile | null {
+		const leaf =
+			this.app.workspace.activeLeaf ??
+			this.app.workspace.getMostRecentLeaf();
+		const view = leaf?.view as
+			| { getViewType?: () => string; file?: TFile | null }
+			| undefined;
+		const viewType = view?.getViewType?.() ?? '';
+		if (
+			this.isEmbedHostViewType(viewType) &&
+			view?.file instanceof TFile
+		) {
+			return view.file;
+		}
+		return this.app.workspace.getActiveFile();
+	}
+
+	/** Views that host interactive embeds (not a plain markdown source). */
+	private isEmbedHostView(): boolean {
+		const leaf =
+			this.app.workspace.activeLeaf ??
+			this.app.workspace.getMostRecentLeaf();
+		const viewType = leaf?.view?.getViewType?.() ?? '';
+		return this.isEmbedHostViewType(viewType);
+	}
+
+	private isEmbedHostViewType(viewType: string): boolean {
+		return (
+			viewType === 'excalidraw' ||
+			viewType.startsWith('excalidraw') ||
+			viewType === 'canvas'
+		);
+	}
+
+	private getSelection(): {
+		selection: string;
+		editor: Editor | null;
+		editorFile: TFile | null;
+	} {
 		let selection = '';
 		let editor: Editor | null = null;
+		let editorFile: TFile | null = null;
 
 		const activeEditor = this.app.workspace.activeEditor;
+		if (activeEditor?.file instanceof TFile) {
+			editorFile = activeEditor.file;
+		}
 		if (activeEditor?.editor) {
 			editor = activeEditor.editor;
 			try {
@@ -118,7 +179,7 @@ export class RenameService {
 			selection = window.getSelection()?.toString() ?? '';
 		}
 
-		return { selection, editor };
+		return { selection, editor, editorFile };
 	}
 
 	private async renameUrlLink(
