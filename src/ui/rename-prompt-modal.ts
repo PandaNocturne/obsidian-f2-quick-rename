@@ -20,6 +20,11 @@ import {
 	resolveRenameFileKind,
 } from '../utils/embed';
 import { buildFullPropertyStates } from '../utils/properties';
+import {
+	DEFAULT_MODAL_MAX_HEIGHT,
+	DEFAULT_MODAL_WIDTH,
+	toMinCssValue,
+} from '../utils/css-size';
 import { FullPropertiesPanel } from './full-properties-panel';
 import {
 	ListValueSuggest,
@@ -86,6 +91,12 @@ export interface RenamePromptOptions {
 		fields: PropertyFieldState[],
 		values: Record<string, PropertyValue>,
 	) => void | Promise<void>;
+	/**
+	 * Panel width CSS length list (commas → min()). Applied as CSS variables.
+	 */
+	modalWidth?: string;
+	/** Panel max-height CSS length list (commas → min()). */
+	modalMaxHeight?: string;
 }
 
 /**
@@ -156,6 +167,7 @@ export class RenamePromptModal extends Modal {
 		if (this.options.mode === 'url') {
 			this.modalEl.addClass('f2-rename-modal-url');
 		}
+		this.applyModalSize();
 
 		const header = contentEl.createDiv({ cls: 'f2-rename-header' });
 		const iconWrap = header.createDiv({ cls: 'f2-rename-icon' });
@@ -338,6 +350,22 @@ export class RenamePromptModal extends Modal {
 			this.resolved = true;
 			this.onSubmit(null);
 		}
+	}
+
+	private applyModalSize(): void {
+		const width = toMinCssValue(
+			this.options.modalWidth,
+			DEFAULT_MODAL_WIDTH,
+		);
+		const maxHeight = toMinCssValue(
+			this.options.modalMaxHeight,
+			DEFAULT_MODAL_MAX_HEIGHT,
+		);
+		this.modalEl.style.setProperty('--f2-rename-modal-width', width);
+		this.modalEl.style.setProperty(
+			'--f2-rename-modal-max-height',
+			maxHeight,
+		);
 	}
 
 	private renderHeaderActions(header: HTMLElement): void {

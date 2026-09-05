@@ -4,7 +4,7 @@
 
 Obsidian 快速重命名插件：当前笔记、光标处嵌入/链接，以及 frontmatter 属性，都可在同一面板中完成。
 
-![1788595445957](image/README.zh-CN/1788595445957.png)
+![demo](image/README/1788595756944.png)
 
 ## 功能
 

@@ -80,6 +80,13 @@ export const zhCN: Record<TranslationKey, string> = {
 	'settings.basic.locale.system': '系统默认',
 	'settings.basic.locale.zhCN': '简体中文',
 	'settings.basic.locale.en': 'English',
+	'settings.basic.modalWidth.name': '面板默认宽度',
+	'settings.basic.modalWidth.desc':
+		'支持 px / vh / vw 等 CSS 长度。多个值用英文逗号分隔，取最小值（CSS min()）。例如：40vw, 720px',
+	'settings.basic.modalMaxHeight.name': '面板最大高度',
+	'settings.basic.modalMaxHeight.desc':
+		'支持 px / vh / vw 等 CSS 长度。多个值用英文逗号分隔，取最小值。例如：90vh, 920px',
+	'settings.basic.resetSize': '重置为默认',
 
 	'settings.features.heading': '功能开关',
 	'settings.features.intro': '关闭后对应功能不会触发。',

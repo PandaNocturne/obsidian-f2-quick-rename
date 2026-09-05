@@ -182,6 +182,17 @@ export class RenameService {
 		return { selection, editor, editorFile };
 	}
 
+	private modalSizeOptions(): {
+		modalWidth: string;
+		modalMaxHeight: string;
+	} {
+		const { settings } = this.plugin;
+		return {
+			modalWidth: settings.modalWidth,
+			modalMaxHeight: settings.modalMaxHeight,
+		};
+	}
+
 	private async renameUrlLink(
 		embed: EmbedMatch,
 		editor: Editor | null,
@@ -201,6 +212,7 @@ export class RenameService {
 				alias: embed.alias ?? '',
 				aliasLabel: t('modal.aliasLabel.title'),
 				sourcePath: this.app.workspace.getActiveFile()?.path ?? '',
+				...this.modalSizeOptions(),
 			},
 		);
 		if (result === null) return;
@@ -285,6 +297,7 @@ export class RenameService {
 								false,
 							)
 					: undefined,
+			...this.modalSizeOptions(),
 		});
 		if (result === null) return;
 
@@ -419,6 +432,7 @@ export class RenameService {
 						);
 					}
 				: undefined,
+			...this.modalSizeOptions(),
 		});
 		if (result === null) return;
 

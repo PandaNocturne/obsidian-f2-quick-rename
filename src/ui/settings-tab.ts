@@ -16,6 +16,11 @@ import {
 	type PropertySettingsItem,
 } from '../settings';
 import {
+	DEFAULT_MODAL_MAX_HEIGHT,
+	DEFAULT_MODAL_WIDTH,
+	normalizeCssLengthList,
+} from '../utils/css-size';
+import {
 	PropertyKeySuggest,
 	resolvePropertyFieldType,
 } from './tag-suggest';
@@ -150,6 +155,19 @@ export class F2RenameSettingTab extends PluginSettingTab {
 					}),
 			);
 
+		this.addCssSizeSetting(containerEl, {
+			nameKey: 'settings.basic.modalWidth.name',
+			descKey: 'settings.basic.modalWidth.desc',
+			settingKey: 'modalWidth',
+			fallback: DEFAULT_MODAL_WIDTH,
+		});
+		this.addCssSizeSetting(containerEl, {
+			nameKey: 'settings.basic.modalMaxHeight.name',
+			descKey: 'settings.basic.modalMaxHeight.desc',
+			settingKey: 'modalMaxHeight',
+			fallback: DEFAULT_MODAL_MAX_HEIGHT,
+		});
+
 		new Setting(containerEl)
 			.setName(t('settings.features.heading'))
 			.setHeading();
@@ -174,6 +192,52 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		}
 
 		this.renderPropertyFieldsSection(containerEl);
+	}
+
+	private addCssSizeSetting(
+		containerEl: HTMLElement,
+		opts: {
+			nameKey: TranslationKey;
+			descKey: TranslationKey;
+			settingKey: 'modalWidth' | 'modalMaxHeight';
+			fallback: string;
+		},
+	): void {
+		const setting = new Setting(containerEl)
+			.setName(t(opts.nameKey))
+			.setDesc(t(opts.descKey));
+
+		setting.addText((text) => {
+			text
+				.setPlaceholder(opts.fallback)
+				.setValue(this.plugin.settings[opts.settingKey])
+				.onChange(async (value) => {
+					this.plugin.settings[opts.settingKey] = value;
+					await this.plugin.saveSettings();
+				});
+			text.inputEl.addEventListener('blur', () => {
+				const normalized = normalizeCssLengthList(
+					this.plugin.settings[opts.settingKey],
+					opts.fallback,
+				);
+				if (normalized !== this.plugin.settings[opts.settingKey]) {
+					this.plugin.settings[opts.settingKey] = normalized;
+					text.setValue(normalized);
+					void this.plugin.saveSettings();
+				}
+			});
+		});
+
+		setting.addExtraButton((btn) =>
+			btn
+				.setIcon('rotate-ccw')
+				.setTooltip(t('settings.basic.resetSize'))
+				.onClick(async () => {
+					this.plugin.settings[opts.settingKey] = opts.fallback;
+					await this.plugin.saveSettings();
+					this.display();
+				}),
+		);
 	}
 
 	private renderPropertyFieldsSection(containerEl: HTMLElement): void {

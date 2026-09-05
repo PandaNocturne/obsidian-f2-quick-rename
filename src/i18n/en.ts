@@ -86,6 +86,13 @@ export const en = {
 	'settings.basic.locale.system': 'System default',
 	'settings.basic.locale.zhCN': '简体中文',
 	'settings.basic.locale.en': 'English',
+	'settings.basic.modalWidth.name': 'Panel width',
+	'settings.basic.modalWidth.desc':
+		'CSS lengths such as 40vw or 600px. Separate multiple with commas; the smallest wins (CSS min()). Example: 40vw, 720px',
+	'settings.basic.modalMaxHeight.name': 'Panel max height',
+	'settings.basic.modalMaxHeight.desc':
+		'CSS lengths such as 90vh or 920px. Separate multiple with commas; the smallest wins. Example: 90vh, 920px',
+	'settings.basic.resetSize': 'Reset to default',
 
 	'settings.features.heading': 'Feature toggles',
 	'settings.features.intro':

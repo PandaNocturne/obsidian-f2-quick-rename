@@ -7,6 +7,11 @@ import {
 	normalizePropertySettingsItem,
 	type F2RenameSettings,
 } from './settings';
+import {
+	DEFAULT_MODAL_MAX_HEIGHT,
+	DEFAULT_MODAL_WIDTH,
+	normalizeCssLengthList,
+} from './utils/css-size';
 import { F2RenameSettingTab } from './ui/settings-tab';
 
 export default class F2RenamePlugin extends Plugin {
@@ -24,6 +29,15 @@ export default class F2RenamePlugin extends Plugin {
 			this.settings.locale = DEFAULT_SETTINGS.locale;
 		}
 		setLocalePreference(this.settings.locale);
+
+		this.settings.modalWidth = normalizeCssLengthList(
+			this.settings.modalWidth,
+			DEFAULT_MODAL_WIDTH,
+		);
+		this.settings.modalMaxHeight = normalizeCssLengthList(
+			this.settings.modalMaxHeight,
+			DEFAULT_MODAL_MAX_HEIGHT,
+		);
 
 		if (!Array.isArray(this.settings.propertyFields)) {
 			this.settings.propertyFields = DEFAULT_PROPERTY_FIELDS.map((item) =>

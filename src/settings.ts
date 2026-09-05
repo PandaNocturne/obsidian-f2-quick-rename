@@ -1,5 +1,9 @@
 import type { LocalePreference } from './i18n';
 import { t } from './i18n';
+import {
+	DEFAULT_MODAL_MAX_HEIGHT,
+	DEFAULT_MODAL_WIDTH,
+} from './utils/css-size';
 
 /** Obsidian-aligned property types (属性类型), plus plugin `select`. */
 export type PropertyFieldType =
@@ -142,6 +146,15 @@ export interface F2RenameSettings {
 	 * Defaults to false.
 	 */
 	editExtension: boolean;
+	/**
+	 * Rename panel width. Comma-separated CSS lengths (px/vh/vw/…) use the
+	 * minimum via CSS `min()`.
+	 */
+	modalWidth: string;
+	/**
+	 * Rename panel max height. Comma-separated CSS lengths use CSS `min()`.
+	 */
+	modalMaxHeight: string;
 	/** Frontmatter keys / separators / rows editable in the rename panel. */
 	propertyFields: PropertySettingsItem[];
 }
@@ -182,6 +195,8 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	autoSaveProperties: true,
 	propertiesDefaultCollapsed: true,
 	editExtension: false,
+	modalWidth: DEFAULT_MODAL_WIDTH,
+	modalMaxHeight: DEFAULT_MODAL_MAX_HEIGHT,
 	propertyFields: DEFAULT_PROPERTY_FIELDS.map((item) =>
 		clonePropertySettingsItem(item),
 	),
