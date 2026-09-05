@@ -4,6 +4,8 @@
 
 Obsidian plugin for fast renaming: the current note, embeds under the cursor, and frontmatter properties in one panel.
 
+![1788595445957](image/README.zh-CN/1788595445957.png)
+
 ## Features
 
 ### Rename

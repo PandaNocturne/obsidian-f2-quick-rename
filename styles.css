@@ -3,6 +3,8 @@
 .modal.f2-rename-modal {
 	width: 40vw;
 	max-width: 60vw;
+	/* Shrink to content; only hit max-height when the panel is tall. */
+	height: fit-content;
 	max-height: min(90vh, 920px);
 	padding: 0;
 	display: flex;
@@ -10,18 +12,18 @@
 	overflow: hidden;
 
 	.modal-close-button,
-	.modal-header{
+	.modal-header {
 		display: none;
 	}
-
 }
 
 .f2-rename-modal .modal-content {
 	display: flex;
 	flex-direction: column;
-	flex: 1 1 auto;
+	flex: 0 1 auto;
 	min-height: 0;
-	max-height: inherit;
+	height: fit-content;
+	max-height: min(90vh, 920px);
 	padding: 0;
 	overflow: hidden;
 }
@@ -95,9 +97,11 @@
 	flex-direction: column;
 	gap: 1rem;
 	padding: 1.1rem 1.25rem;
-	flex: 1 1 auto;
+	flex: 0 1 auto;
 	min-height: 0;
-	overflow: hidden;
+	/* Single scrollport for filename + properties when modal hits max-height. */
+	overflow-x: hidden;
+	overflow-y: auto;
 }
 
 .f2-rename-body > .f2-rename-form {
@@ -260,6 +264,9 @@
 	padding-top: 0.65rem;
 	width: 100%;
 	min-height: 0;
+	/* Do not scroll here — body scrolls when needed (avoids phantom scrollbar). */
+	overflow: visible;
+	flex: 0 0 auto;
 }
 
 .f2-rename-props-panel-configured {
@@ -268,25 +275,15 @@
 
 .f2-rename-props-panel-configured.is-open {
 	display: block;
-	flex: 1 1 auto;
-	min-height: 0;
-	overflow-x: hidden;
-	overflow-y: auto;
 }
 
 .f2-rename-props-panel-full {
-	flex: 1 1 auto;
-	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	overflow-y: auto;
 }
 
 .f2-rename-props-panel-full .f2-full-props {
-	flex: 1 1 auto;
-	min-height: 0;
-	overflow-x: hidden;
-	overflow-y: auto;
+	overflow: visible;
 }
 
 .f2-rename-btn-add-prop {
