@@ -24,6 +24,7 @@ import {
 	resolvePropertyTypeAttr,
 	shouldSuggestTags,
 } from './tag-suggest';
+import { WikiLinkSuggest } from './wiki-link-suggest';
 
 const DRAG_MIME = 'application/x-f2-full-property';
 
@@ -372,6 +373,7 @@ export class FullPropertiesPanel {
 		textarea.addEventListener('change', () => {
 			void this.persist(true);
 		});
+		this.attachWikiLinkSuggest(textarea, key);
 	}
 
 	private renderSingleLineText(
@@ -420,6 +422,19 @@ export class FullPropertiesPanel {
 				textarea?.focus();
 				this.schedulePersist();
 			}, 0);
+		});
+		this.attachWikiLinkSuggest(input, key);
+	}
+
+	private attachWikiLinkSuggest(
+		inputEl: HTMLInputElement | HTMLTextAreaElement,
+		key: string,
+	): void {
+		new WikiLinkSuggest(this.app, inputEl, {
+			sourcePath: this.sourcePath,
+			onInserted: (value) => {
+				this.setValue(key, value, false);
+			},
 		});
 	}
 
