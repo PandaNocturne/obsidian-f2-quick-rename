@@ -101,7 +101,7 @@ export const zhCN: Record<TranslationKey, string> = {
 		'选中或光标所在行为标题时，调用 Obsidian 自带的「重命名标题」。',
 	'settings.features.renameCompanions.name': '连带重命名同名文件',
 	'settings.features.renameCompanions.desc':
-		'同文件夹、同主文件名、不同扩展名的文件一并重命名（例如 note.md 与 note.canvas）。',
+		'同文件夹、同主文件名、不同扩展名的文件一并重命名（例如 note.md、note.canvas 与 note.excalidraw.md）。',
 	'settings.features.copyNameToClipboard.name': '复制新名称到剪贴板',
 	'settings.features.copyNameToClipboard.desc':
 		'重命名当前打开的笔记后，将新主文件名写入剪贴板（重命名嵌入时不复制）。',

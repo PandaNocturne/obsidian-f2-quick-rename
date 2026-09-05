@@ -4,7 +4,10 @@ import type F2RenamePlugin from './main';
 import { promptRename } from './ui/rename-prompt-modal';
 import {
 	type EmbedMatch,
+	companionStem,
+	companionStemFromLeaf,
 	displayExtensionSuffix,
+	fileExtensionSuffix,
 	isExcalidrawFile,
 	isWebUrl,
 	linkpathDisplayBase,
@@ -543,10 +546,11 @@ export class RenameService {
 		await this.app.fileManager.renameFile(target, newPath);
 
 		for (const companion of companions) {
+			const suffix = fileExtensionSuffix(companion);
 			const companionNewPath = normalizePath(
 				parentPath
-					? `${parentPath}/${newBase}.${companion.extension}`
-					: `${newBase}.${companion.extension}`,
+					? `${parentPath}/${newBase}${suffix}`
+					: `${newBase}${suffix}`,
 			);
 			if (companionNewPath === companion.path) continue;
 			try {
@@ -597,7 +601,7 @@ export class RenameService {
 
 	/**
 	 * Build the target path from the editable stem + extension suffix.
-	 * Companion renames use Obsidian's basename stem of the new leaf name.
+	 * Companion renames use the shared stem (strips `.excalidraw.md` correctly).
 	 */
 	private buildRenamePaths(
 		target: TFile,
@@ -615,10 +619,7 @@ export class RenameService {
 		const newPath = normalizePath(
 			parentPath ? `${parentPath}/${leaf}` : leaf,
 		);
-		const companionBase = leaf.includes('.')
-			? leaf.replace(/\.[^.]+$/, '')
-			: leaf;
-		return { newPath, companionBase };
+		return { newPath, companionBase: companionStemFromLeaf(leaf) };
 	}
 
 	private describeFileKind(
@@ -639,19 +640,20 @@ export class RenameService {
 	}
 
 	/**
-	 * Same folder, same basename stem, different extension
-	 * (e.g. `note.md` + `note.canvas`).
+	 * Same folder, same companion stem, different full extension
+	 * (e.g. `note.md` + `note.canvas` + `note.excalidraw.md`).
+	 * Stem compare is case-insensitive; Excalidraw compound suffixes supported.
 	 */
 	private findCompanions(file: TFile): TFile[] {
-		const parent = file.parent;
-		if (!parent) return [];
+		const parentPath = file.parent?.path ?? '';
+		const stem = companionStem(file);
+		if (!stem) return [];
+		const stemKey = stem.toLowerCase();
 
-		const stem = file.basename;
-		return parent.children.filter(
-			(child): child is TFile =>
-				child instanceof TFile &&
-				child.path !== file.path &&
-				child.basename === stem,
-		);
+		return this.app.vault.getFiles().filter((child) => {
+			if (child.path === file.path) return false;
+			if ((child.parent?.path ?? '') !== parentPath) return false;
+			return companionStem(child).toLowerCase() === stemKey;
+		});
 	}
 }

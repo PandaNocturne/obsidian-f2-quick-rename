@@ -195,16 +195,61 @@ export function resolveEmbedFile(
 }
 
 export function stripExcalidrawBasename(basename: string): string {
-	return basename.endsWith('.excalidraw')
+	const lower = basename.toLowerCase();
+	return lower.endsWith('.excalidraw')
 		? basename.slice(0, -'.excalidraw'.length)
 		: basename;
 }
 
 export function isExcalidrawFile(file: TFile): boolean {
+	const name = file.name.toLowerCase();
 	return (
-		file.extension === 'excalidraw' ||
-		file.name.endsWith('.excalidraw.md')
+		file.extension.toLowerCase() === 'excalidraw' ||
+		name.endsWith('.excalidraw.md')
 	);
+}
+
+/**
+ * Full extension suffix for a vault file, including compound Excalidraw
+ * suffixes (`.excalidraw.md` / `.excalidraw`). Always normalized to lowercase.
+ */
+export function fileExtensionSuffix(file: TFile): string {
+	const name = file.name.toLowerCase();
+	if (name.endsWith('.excalidraw.md')) return '.excalidraw.md';
+	if (file.extension.toLowerCase() === 'excalidraw' || name.endsWith('.excalidraw')) {
+		return '.excalidraw';
+	}
+	return file.extension ? `.${file.extension}` : '';
+}
+
+/**
+ * Shared stem for companion matching in the same folder.
+ * `Note.excalidraw.md`, `Note.md`, and `Note.canvas` all share stem `Note`.
+ * Case-insensitive for `.excalidraw` / `.excalidraw.md`.
+ */
+export function companionStem(file: TFile): string {
+	const name = file.name;
+	const lower = name.toLowerCase();
+	if (lower.endsWith('.excalidraw.md')) {
+		return name.slice(0, -'.excalidraw.md'.length);
+	}
+	if (lower.endsWith('.excalidraw')) {
+		return name.slice(0, -'.excalidraw'.length);
+	}
+	return file.basename;
+}
+
+/** Companion stem from a full leaf name such as `Note.excalidraw.md`. */
+export function companionStemFromLeaf(leaf: string): string {
+	const lower = leaf.toLowerCase();
+	if (lower.endsWith('.excalidraw.md')) {
+		return leaf.slice(0, -'.excalidraw.md'.length);
+	}
+	if (lower.endsWith('.excalidraw')) {
+		return leaf.slice(0, -'.excalidraw'.length);
+	}
+	const dot = leaf.lastIndexOf('.');
+	return dot > 0 ? leaf.slice(0, dot) : leaf;
 }
 
 export function normalizeSpaces(name: string): string {
@@ -228,8 +273,14 @@ export function displayExtensionSuffix(
 ): string {
 	if (file) {
 		if (excalidraw || isExcalidrawFile(file)) {
-			if (file.name.endsWith('.excalidraw.md')) return '.excalidraw.md';
-			if (file.extension === 'excalidraw') return '.excalidraw';
+			const lower = file.name.toLowerCase();
+			if (lower.endsWith('.excalidraw.md')) return '.excalidraw.md';
+			if (
+				file.extension.toLowerCase() === 'excalidraw' ||
+				lower.endsWith('.excalidraw')
+			) {
+				return '.excalidraw';
+			}
 		}
 		return file.extension ? `.${file.extension}` : '';
 	}

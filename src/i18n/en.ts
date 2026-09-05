@@ -108,7 +108,7 @@ export const en = {
 		'When the selection or current line is a heading, use Obsidian’s built-in “Rename heading”.',
 	'settings.features.renameCompanions.name': 'Also rename companion files',
 	'settings.features.renameCompanions.desc':
-		'Also rename files in the same folder that share the same basename with a different extension (for example note.md and note.canvas).',
+		'Also rename files in the same folder that share the same stem with a different extension (for example note.md, note.canvas, and note.excalidraw.md).',
 	'settings.features.copyNameToClipboard.name': 'Copy new name to clipboard',
 	'settings.features.copyNameToClipboard.desc':
 		'After renaming the active note, copy the new basename to the clipboard (not when renaming embeds).',
