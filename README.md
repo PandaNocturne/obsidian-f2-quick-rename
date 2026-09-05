@@ -54,6 +54,15 @@ Hotkeys can be changed under **Settings → Hotkeys**.
 
 ## Install
 
+Recommended: install with [BRAT](https://github.com/TfTHacker/obsidian42-brat) (Obsidian42 — BRAT) until the plugin is in the community catalog.
+
+1. Install and enable **BRAT** from **Settings → Community plugins → Browse**
+2. Command palette → **BRAT: Add a beta plugin for testing**
+3. Paste: `https://github.com/PandaNocturne/obsidian-f2-quick-rename`
+4. Enable **F2 Quick Rename** in **Settings → Community plugins**
+
+BRAT can also check for updates (or auto-update on startup in BRAT settings).
+
 ### Manual
 
 1. Build or download `main.js`, `manifest.json`, and `styles.css`

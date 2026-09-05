@@ -54,6 +54,15 @@ Obsidian 快速重命名插件：当前笔记、光标处嵌入/链接，以及 
 
 ## 安装
 
+推荐使用 [BRAT](https://github.com/TfTHacker/obsidian42-brat)（Obsidian42 — BRAT）安装，便于在未上架社区插件市场前获取更新。
+
+1. 在 **设置 → 社区插件 → 浏览** 中安装并启用 **BRAT**
+2. 命令面板 → **BRAT: Add a beta plugin for testing**
+3. 粘贴：`https://github.com/PandaNocturne/obsidian-f2-quick-rename`
+4. 在 **设置 → 社区插件** 中启用 **F2 Quick Rename**
+
+也可在 BRAT 中检查更新（或在其设置中开启启动时自动更新）。
+
 ### 手动安装
 
 1. 构建或下载 `main.js`、`manifest.json`、`styles.css`
