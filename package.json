@@ -1,6 +1,6 @@
 {
 	"name": "f2-quick-rename",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "F2 Quick Rename — rename notes and embeds (including images with aliases) in Obsidian",
 	"main": "main.js",
 	"type": "module",
@@ -10,7 +10,11 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint ."
 	},
-	"keywords": ["obsidian", "rename", "f2"],
+	"keywords": [
+		"obsidian",
+		"rename",
+		"f2"
+	],
 	"author": "PandaNocturne",
 	"license": "0-BSD",
 	"devDependencies": {
