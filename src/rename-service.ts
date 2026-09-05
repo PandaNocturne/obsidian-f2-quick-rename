@@ -48,10 +48,10 @@ export class RenameService {
 			return;
 		}
 
-		// Excalidraw (and Canvas) host an interactive embed leaf/editor that can
-		// steal activeEditor / getActiveFile even when the embed is not being
-		// edited. Always rename the host drawing/canvas file in that case.
-		if (this.isEmbedHostView()) {
+		// Excalidraw hosts an interactive embed leaf/editor that can steal
+		// activeEditor / getActiveFile. Always rename the host drawing file.
+		// Canvas is excluded: card editors should still resolve embeds/links.
+		if (this.isExcalidrawHostView()) {
 			await this.renameTargetFile(file, false);
 			return;
 		}
@@ -137,6 +137,7 @@ export class RenameService {
 	/**
 	 * File owned by the active leaf's view. Prefer this over getActiveFile()
 	 * so Excalidraw interactive embeds do not become the rename target.
+	 * On Canvas, prefer the note being edited in a card when present.
 	 */
 	private resolveCommandTargetFile(): TFile | null {
 		const leaf =
@@ -146,29 +147,39 @@ export class RenameService {
 			| { getViewType?: () => string; file?: TFile | null }
 			| undefined;
 		const viewType = view?.getViewType?.() ?? '';
+
 		if (
-			this.isEmbedHostViewType(viewType) &&
+			this.isExcalidrawHostViewType(viewType) &&
 			view?.file instanceof TFile
 		) {
 			return view.file;
 		}
+
+		if (viewType === 'canvas') {
+			const activeEditor = this.app.workspace.activeEditor;
+			if (activeEditor?.file instanceof TFile) {
+				return activeEditor.file;
+			}
+			if (view?.file instanceof TFile) {
+				return view.file;
+			}
+		}
+
 		return this.app.workspace.getActiveFile();
 	}
 
-	/** Views that host interactive embeds (not a plain markdown source). */
-	private isEmbedHostView(): boolean {
+	/** Excalidraw view that hosts interactive embeds (not Canvas). */
+	private isExcalidrawHostView(): boolean {
 		const leaf =
 			this.app.workspace.activeLeaf ??
 			this.app.workspace.getMostRecentLeaf();
 		const viewType = leaf?.view?.getViewType?.() ?? '';
-		return this.isEmbedHostViewType(viewType);
+		return this.isExcalidrawHostViewType(viewType);
 	}
 
-	private isEmbedHostViewType(viewType: string): boolean {
+	private isExcalidrawHostViewType(viewType: string): boolean {
 		return (
-			viewType === 'excalidraw' ||
-			viewType.startsWith('excalidraw') ||
-			viewType === 'canvas'
+			viewType === 'excalidraw' || viewType.startsWith('excalidraw')
 		);
 	}
 
