@@ -11,6 +11,7 @@ export const zhCN: Record<TranslationKey, string> = {
 	'commands.renameFileOrEmbed': '重命名文件或嵌入',
 	'commands.renameAndEditAllProperties': '重命名并编辑全部属性',
 	'commands.renameAttachments': '重命名附件',
+	'commands.copyAndDelete': '复制并删除文件',
 	'menu.f2Rename': 'F2 快速重命名',
 
 	'settings.tab.general': '基础设置',
@@ -19,6 +20,8 @@ export const zhCN: Record<TranslationKey, string> = {
 	'settings.tab.attachments': '附件重命名',
 
 	'notice.noOpenFile': '没有打开的文件',
+	'notice.noEmbedToDelete':
+		'光标处没有嵌入文档。此命令只删除嵌入目标，不会删除当前笔记。',
 	'notice.fullPropertiesMarkdownOnly': '仅支持 Markdown 笔记的全属性面板',
 	'notice.attachmentsMarkdownOnly': '附件重命名仅支持 Markdown 笔记',
 	'notice.noAttachmentsFound': '当前笔记中未找到可识别的附件',
@@ -69,7 +72,15 @@ export const zhCN: Record<TranslationKey, string> = {
 	'header.openFolder': '在文件夹中显示',
 	'header.copyWiki': '复制 wiki',
 	'header.fullProperties': '全部属性',
+	'header.deleteFile': '复制并删除',
+	'header.deleteConfirm.title': '删除此文件？',
+	'header.deleteConfirm.message':
+		'文件将移入回收站。可复制类型会先写入剪贴板（Markdown 不含 YAML）。',
+	'header.deleteConfirm.confirm': '删除',
 	'notice.folderRevealUnavailable': '仅桌面端可在文件夹中显示',
+	'notice.copiedAndDeleted': '已复制内容到剪贴板，并删除文件',
+	'notice.deletedFile': '已删除文件',
+	'notice.deleteFailed': '删除文件失败',
 	'notice.copiedWiki': '已复制 wiki 链接',
 	'notice.copiedText': '已复制',
 	'notice.copyFailed': '复制失败',
@@ -130,6 +141,16 @@ export const zhCN: Record<TranslationKey, string> = {
 	'settings.features.editExtension.name': '双击修改扩展名',
 	'settings.features.editExtension.desc':
 		'开启后，可在重命名面板中双击文件名后的扩展名进行编辑（例如 .md）。默认关闭。',
+	'settings.features.showHeaderDelete.name': '重命名面板显示删除按钮',
+	'settings.features.showHeaderDelete.desc':
+		'在重命名面板标题栏显示删除按钮。确认后，可复制类型会先写入剪贴板（Markdown 不含 YAML），再将文件移入回收站。',
+	'settings.features.confirmBeforeDelete.name': '删除前二次确认',
+	'settings.features.confirmBeforeDelete.desc':
+		'复制并删除前弹出确认（面板按钮与命令均生效）。默认开启。',
+	'settings.features.copyOnDeleteTypes.name': '删除前复制的文件类型',
+	'settings.features.copyOnDeleteTypes.desc':
+		'逗号分隔的扩展名；这些类型会在删除前复制到剪贴板。例如：md,txt,js,py',
+	'settings.features.copyOnDeleteTypes.reset': '重置为默认',
 
 	'settings.attachments.heading': '附件重命名',
 	'settings.attachments.intro':

@@ -13,6 +13,7 @@ import {
 	DEFAULT_ATTACHMENT_NAME_TEMPLATE,
 	DEFAULT_ATTACHMENT_RENAME_DELAY_MS,
 } from './utils/attachments';
+import { DEFAULT_COPY_ON_DELETE_TYPES } from './utils/file-delete';
 import {
 	DEFAULT_MODAL_MAX_HEIGHT,
 	DEFAULT_MODAL_WIDTH,
@@ -64,6 +65,15 @@ export default class F2RenamePlugin extends Plugin {
 		if (typeof this.settings.attachmentSilentMode !== 'boolean') {
 			this.settings.attachmentSilentMode = false;
 		}
+		if (typeof this.settings.showHeaderDelete !== 'boolean') {
+			this.settings.showHeaderDelete = true;
+		}
+		if (typeof this.settings.confirmBeforeDelete !== 'boolean') {
+			this.settings.confirmBeforeDelete = true;
+		}
+		if (typeof this.settings.copyOnDeleteTypes !== 'string') {
+			this.settings.copyOnDeleteTypes = DEFAULT_COPY_ON_DELETE_TYPES;
+		}
 
 		if (!Array.isArray(this.settings.propertyFields)) {
 			this.settings.propertyFields = DEFAULT_PROPERTY_FIELDS.map((item) =>
@@ -84,6 +94,15 @@ export default class F2RenamePlugin extends Plugin {
 			hotkeys: [{ modifiers: [], key: 'F2' }],
 			callback: () => {
 				void this.renameService.run();
+			},
+		});
+
+		this.addCommand({
+			id: 'copy-and-delete',
+			name: t('commands.copyAndDelete'),
+			hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'X' }],
+			callback: () => {
+				void this.renameService.runCopyAndDelete();
 			},
 		});
 

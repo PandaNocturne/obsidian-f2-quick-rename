@@ -20,6 +20,7 @@ import {
 	DEFAULT_ATTACHMENT_NAME_TEMPLATE,
 	DEFAULT_ATTACHMENT_RENAME_DELAY_MS,
 } from '../utils/attachments';
+import { DEFAULT_COPY_ON_DELETE_TYPES } from '../utils/file-delete';
 import {
 	DEFAULT_MODAL_MAX_HEIGHT,
 	DEFAULT_MODAL_WIDTH,
@@ -123,6 +124,16 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 		key: 'editExtension',
 		nameKey: 'settings.features.editExtension.name',
 		descKey: 'settings.features.editExtension.desc',
+	},
+	{
+		key: 'showHeaderDelete',
+		nameKey: 'settings.features.showHeaderDelete.name',
+		descKey: 'settings.features.showHeaderDelete.desc',
+	},
+	{
+		key: 'confirmBeforeDelete',
+		nameKey: 'settings.features.confirmBeforeDelete.name',
+		descKey: 'settings.features.confirmBeforeDelete.desc',
 	},
 ];
 
@@ -262,6 +273,32 @@ export class F2RenameSettingTab extends PluginSettingTab {
 						}),
 				);
 		}
+
+		const copyTypes = new Setting(containerEl)
+			.setName(t('settings.features.copyOnDeleteTypes.name'))
+			.setDesc(t('settings.features.copyOnDeleteTypes.desc'));
+		copyTypes.settingEl.addClass('f2-rename-setting-full-line');
+		copyTypes.addText((text) => {
+			text
+				.setPlaceholder(DEFAULT_COPY_ON_DELETE_TYPES)
+				.setValue(this.plugin.settings.copyOnDeleteTypes)
+				.onChange(async (value) => {
+					this.plugin.settings.copyOnDeleteTypes = value;
+					await this.plugin.saveSettings();
+				});
+			text.inputEl.addClass('f2-rename-setting-full-input');
+		});
+		copyTypes.addExtraButton((btn) =>
+			btn
+				.setIcon('rotate-ccw')
+				.setTooltip(t('settings.features.copyOnDeleteTypes.reset'))
+				.onClick(async () => {
+					this.plugin.settings.copyOnDeleteTypes =
+						DEFAULT_COPY_ON_DELETE_TYPES;
+					await this.plugin.saveSettings();
+					this.display();
+				}),
+		);
 	}
 
 	private renderAttachmentSettings(containerEl: HTMLElement): void {

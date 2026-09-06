@@ -19,7 +19,15 @@ import {
 	renameFileKindIcon,
 	resolveRenameFileKind,
 } from '../utils/embed';
-import { buildFullPropertyStates } from '../utils/properties';
+import {
+	DEFAULT_COPY_ON_DELETE_TYPES,
+	confirmDeleteFile,
+	copyAndTrashFile,
+	parseCopyOnDeleteTypes,
+} from '../utils/file-delete';
+import {
+	buildFullPropertyStates,
+} from '../utils/properties';
 import {
 	DEFAULT_MODAL_MAX_HEIGHT,
 	DEFAULT_MODAL_WIDTH,
@@ -97,6 +105,12 @@ export interface RenamePromptOptions {
 	modalWidth?: string;
 	/** Panel max-height CSS length list (commas → min()). */
 	modalMaxHeight?: string;
+	/** Show delete (copy + trash) in the header when relatedFile is set. */
+	enableDelete?: boolean;
+	/** Ask for confirmation before delete. Defaults to true. */
+	confirmBeforeDelete?: boolean;
+	/** Extensions copied to clipboard before delete (comma-separated). */
+	copyOnDeleteTypes?: string;
 }
 
 /**
@@ -260,8 +274,8 @@ export class RenamePromptModal extends Modal {
 				this.aliasValue = v;
 			});
 			this.inputEl = this.createTextField(form, nameField, (v) => {
-				this.value = v;
-			});
+					this.value = v;
+				});
 		} else {
 			this.inputEl = this.createTextField(form, nameField, (v) => {
 				this.value = v;
@@ -432,6 +446,17 @@ export class RenamePromptModal extends Modal {
 			},
 		});
 
+		if (this.options.enableDelete && file) {
+			this.createHeaderActionButton(actions, {
+				icon: 'trash-2',
+				label: t('header.deleteFile'),
+				danger: true,
+				onClick: () => {
+					void this.handleDeleteFile(file);
+				},
+			});
+		}
+
 		if (this.canToggleFullProperties()) {
 			this.fullModeHeaderBtn = this.createHeaderActionButton(actions, {
 				icon: 'list',
@@ -442,12 +467,35 @@ export class RenamePromptModal extends Modal {
 		}
 	}
 
+	private async handleDeleteFile(file: TFile): Promise<void> {
+		if (this.options.confirmBeforeDelete !== false) {
+			const confirmed = await confirmDeleteFile(this.app);
+			if (!confirmed) return;
+		}
+
+		const types = parseCopyOnDeleteTypes(
+			this.options.copyOnDeleteTypes ?? DEFAULT_COPY_ON_DELETE_TYPES,
+		);
+		const result = await copyAndTrashFile(this.app, file, types);
+		if (result === 'failed') {
+			new Notice(t('notice.deleteFailed'));
+			return;
+		}
+		new Notice(
+			result === 'copied-deleted'
+				? t('notice.copiedAndDeleted')
+				: t('notice.deletedFile'),
+		);
+		this.submit(null);
+	}
+
 	private createHeaderActionButton(
 		parent: HTMLElement,
 		opts: {
 			icon: string;
 			label: string;
 			disabled?: boolean;
+			danger?: boolean;
 			onClick: () => void;
 		},
 	): HTMLButtonElement {
@@ -458,6 +506,7 @@ export class RenamePromptModal extends Modal {
 				'aria-label': opts.label,
 			},
 		});
+		if (opts.danger) btn.addClass('is-danger');
 		if (opts.disabled) {
 			btn.disabled = true;
 			btn.addClass('is-disabled');

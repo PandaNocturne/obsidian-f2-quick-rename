@@ -32,6 +32,11 @@ import {
 	writeMergedFrontmatter,
 	writePropertyValues,
 } from './utils/properties';
+import {
+	confirmDeleteFile,
+	copyAndTrashFile,
+	parseCopyOnDeleteTypes,
+} from './utils/file-delete';
 
 export class RenameService {
 	constructor(private readonly plugin: F2RenamePlugin) {}
@@ -115,6 +120,66 @@ export class RenameService {
 	/** Rename a specific vault file (e.g. from the file explorer context menu). */
 	async runForFile(file: TFile): Promise<void> {
 		await this.renameTargetFile(file, false);
+	}
+
+	/**
+	 * Copy (when type allows) and trash the **embedded** file under the cursor.
+	 * Does not delete the current note. Bound to Ctrl/Cmd+Shift+X by default.
+	 */
+	async runCopyAndDelete(): Promise<void> {
+		const target = this.resolveDeleteTarget();
+		if (!target) {
+			new Notice(t('notice.noEmbedToDelete'));
+			return;
+		}
+
+		const confirmed = this.plugin.settings.confirmBeforeDelete
+			? await confirmDeleteFile(this.app)
+			: true;
+		if (!confirmed) return;
+
+		const types = parseCopyOnDeleteTypes(
+			this.plugin.settings.copyOnDeleteTypes,
+		);
+		const result = await copyAndTrashFile(this.app, target, types);
+		if (result === 'failed') {
+			new Notice(t('notice.deleteFailed'));
+			return;
+		}
+		new Notice(
+			result === 'copied-deleted'
+				? t('notice.copiedAndDeleted')
+				: t('notice.deletedFile'),
+		);
+	}
+
+	/**
+	 * Resolve only an embed/link target under the cursor/selection.
+	 * Never returns the current note itself.
+	 */
+	private resolveDeleteTarget(): TFile | null {
+		const file = this.resolveCommandTargetFile();
+		if (!file) return null;
+
+		// Excalidraw host view: not an embed-in-note context for this command.
+		if (this.isExcalidrawHostView()) {
+			return null;
+		}
+
+		const { selection, hasExplicitSelection, editor, editorFile } =
+			this.getSelection();
+		if (!selection?.trim()) return null;
+
+		const sameNote = !editorFile || editorFile.path === file.path;
+		if (!sameNote) return null;
+		if (!editor && !hasExplicitSelection) return null;
+
+		const embed = matchSelectionEmbed(selection);
+		if (!embed || isWebUrl(embed.linkpath)) return null;
+
+		const target = resolveEmbedFile(this.app, embed.linkpath, file.path);
+		if (!target || target.path === file.path) return null;
+		return target;
 	}
 
 	/**
@@ -236,11 +301,17 @@ export class RenameService {
 	private modalSizeOptions(): {
 		modalWidth: string;
 		modalMaxHeight: string;
+		enableDelete: boolean;
+		confirmBeforeDelete: boolean;
+		copyOnDeleteTypes: string;
 	} {
 		const { settings } = this.plugin;
 		return {
 			modalWidth: settings.modalWidth,
 			modalMaxHeight: settings.modalMaxHeight,
+			enableDelete: settings.showHeaderDelete,
+			confirmBeforeDelete: settings.confirmBeforeDelete,
+			copyOnDeleteTypes: settings.copyOnDeleteTypes,
 		};
 	}
 

@@ -5,6 +5,7 @@ import {
 	DEFAULT_ATTACHMENT_NAME_TEMPLATE,
 	DEFAULT_ATTACHMENT_RENAME_DELAY_MS,
 } from './utils/attachments';
+import { DEFAULT_COPY_ON_DELETE_TYPES } from './utils/file-delete';
 import {
 	DEFAULT_MODAL_MAX_HEIGHT,
 	DEFAULT_MODAL_WIDTH,
@@ -152,6 +153,18 @@ export interface F2RenameSettings {
 	 */
 	editExtension: boolean;
 	/**
+	 * Show a delete button in the rename panel header.
+	 * Deletes the related file (after confirm); copyable types are copied first.
+	 */
+	showHeaderDelete: boolean;
+	/** Ask for confirmation before copy-and-delete. Defaults to true. */
+	confirmBeforeDelete: boolean;
+	/**
+	 * Extensions that are copied to the clipboard before delete
+	 * (markdown strips YAML). Example: md,txt,js,py
+	 */
+	copyOnDeleteTypes: string;
+	/**
 	 * Rename panel width. Comma-separated CSS lengths (px/vh/vw/…) use the
 	 * minimum via CSS `min()`.
 	 */
@@ -217,6 +230,9 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	autoSaveProperties: true,
 	propertiesDefaultCollapsed: true,
 	editExtension: false,
+	showHeaderDelete: true,
+	confirmBeforeDelete: true,
+	copyOnDeleteTypes: DEFAULT_COPY_ON_DELETE_TYPES,
 	modalWidth: DEFAULT_MODAL_WIDTH,
 	modalMaxHeight: DEFAULT_MODAL_MAX_HEIGHT,
 	attachmentExtensions: DEFAULT_ATTACHMENT_EXTENSIONS,

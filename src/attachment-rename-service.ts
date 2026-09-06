@@ -189,6 +189,9 @@ export class AttachmentRenameService {
 				sourcePath: this.app.workspace.getActiveFile()?.path ?? file.path,
 				modalWidth: settings.modalWidth,
 				modalMaxHeight: settings.modalMaxHeight,
+				enableDelete: settings.showHeaderDelete,
+				confirmBeforeDelete: settings.confirmBeforeDelete,
+				copyOnDeleteTypes: settings.copyOnDeleteTypes,
 			},
 		);
 		if (result === null) return;

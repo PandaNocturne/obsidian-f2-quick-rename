@@ -9,6 +9,7 @@ export const en = {
 	'commands.renameFileOrEmbed': 'Rename file or embed',
 	'commands.renameAndEditAllProperties': 'Rename and edit all properties',
 	'commands.renameAttachments': 'Rename attachments',
+	'commands.copyAndDelete': 'Copy and delete file',
 	'menu.f2Rename': 'F2 Quick rename',
 
 	'settings.tab.general': 'General',
@@ -17,6 +18,8 @@ export const en = {
 	'settings.tab.attachments': 'Attachments',
 
 	'notice.noOpenFile': 'No file is open',
+	'notice.noEmbedToDelete':
+		'No embedded file under the cursor. This command only deletes embeds, not the current note.',
 	'notice.fullPropertiesMarkdownOnly':
 		'Full properties panel is only supported for Markdown notes',
 	'notice.attachmentsMarkdownOnly':
@@ -75,8 +78,16 @@ export const en = {
 	'header.openFolder': 'Show in folder',
 	'header.copyWiki': 'Copy wikilink',
 	'header.fullProperties': 'All properties',
+	'header.deleteFile': 'Copy and delete',
+	'header.deleteConfirm.title': 'Delete this file?',
+	'header.deleteConfirm.message':
+		'The file will be moved to trash. Copyable types are copied to the clipboard first (Markdown without YAML).',
+	'header.deleteConfirm.confirm': 'Delete',
 	'notice.folderRevealUnavailable':
 		'Show in folder is only available on desktop',
+	'notice.copiedAndDeleted': 'Copied to clipboard and deleted',
+	'notice.deletedFile': 'File deleted',
+	'notice.deleteFailed': 'Failed to delete file',
 	'notice.copiedWiki': 'Copied wikilink',
 	'notice.copiedText': 'Copied',
 	'notice.copyFailed': 'Copy failed',
@@ -138,6 +149,16 @@ export const en = {
 	'settings.features.editExtension.name': 'Double-click to edit extension',
 	'settings.features.editExtension.desc':
 		'When enabled, double-click the extension after the filename in the rename panel to edit it (for example .md). Off by default.',
+	'settings.features.showHeaderDelete.name': 'Delete button in rename panel',
+	'settings.features.showHeaderDelete.desc':
+		'Show a delete button in the rename panel header. After confirmation, copyable files are copied to the clipboard (Markdown without YAML) and the file is moved to trash.',
+	'settings.features.confirmBeforeDelete.name': 'Confirm before delete',
+	'settings.features.confirmBeforeDelete.desc':
+		'Ask for confirmation before copy-and-delete (panel button and command). On by default.',
+	'settings.features.copyOnDeleteTypes.name': 'Copy before delete — file types',
+	'settings.features.copyOnDeleteTypes.desc':
+		'Comma-separated extensions that are copied to the clipboard before delete. Example: md,txt,js,py',
+	'settings.features.copyOnDeleteTypes.reset': 'Reset to default',
 
 	'settings.attachments.heading': 'Attachment rename',
 	'settings.attachments.intro':
