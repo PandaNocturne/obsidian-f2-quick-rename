@@ -12,6 +12,7 @@
 	overflow: hidden;
 
 	.modal-close-button,
+	.modal-header-button,
 	.modal-header {
 		display: none;
 	}
