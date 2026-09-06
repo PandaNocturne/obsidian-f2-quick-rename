@@ -13,6 +13,11 @@ export const zhCN: Record<TranslationKey, string> = {
 	'commands.renameAttachments': '重命名附件',
 	'menu.f2Rename': 'F2 快速重命名',
 
+	'settings.tab.general': '基础设置',
+	'settings.tab.features': '功能开关',
+	'settings.tab.properties': '文档属性',
+	'settings.tab.attachments': '附件重命名',
+
 	'notice.noOpenFile': '没有打开的文件',
 	'notice.fullPropertiesMarkdownOnly': '仅支持 Markdown 笔记的全属性面板',
 	'notice.attachmentsMarkdownOnly': '附件重命名仅支持 Markdown 笔记',

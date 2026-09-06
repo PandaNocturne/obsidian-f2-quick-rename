@@ -1027,3 +1027,45 @@
 .setting-item .f2-rename-setting-wide {
 	width: min(100%, 28rem);
 }
+
+/* Settings tabs */
+
+.f2-rename-settings-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	margin-bottom: 1rem;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.f2-rename-settings-tab {
+	margin: 0;
+	padding: 0.35rem 0.75rem;
+	border: 1px solid transparent;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+}
+
+.f2-rename-settings-tab:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.f2-rename-settings-tab.is-active {
+	color: var(--text-normal);
+	border-color: var(--background-modifier-border);
+	background: var(--background-secondary);
+	font-weight: var(--font-medium);
+}
+
+.f2-rename-settings-panel {
+	display: none;
+}
+
+.f2-rename-settings-panel.is-active {
+	display: block;
+}

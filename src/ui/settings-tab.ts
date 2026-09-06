@@ -128,9 +128,19 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 
 const DRAG_MIME = 'application/x-f2-rename-property';
 
+type SettingsTabId = 'general' | 'features' | 'properties' | 'attachments';
+
+const SETTINGS_TABS: { id: SettingsTabId; labelKey: TranslationKey }[] = [
+	{ id: 'general', labelKey: 'settings.tab.general' },
+	{ id: 'features', labelKey: 'settings.tab.features' },
+	{ id: 'properties', labelKey: 'settings.tab.properties' },
+	{ id: 'attachments', labelKey: 'settings.tab.attachments' },
+];
+
 export class F2RenameSettingTab extends PluginSettingTab {
 	plugin: F2RenamePlugin;
 	private dragPath: DragPath | null = null;
+	private activeTab: SettingsTabId = 'general';
 
 	constructor(app: App, plugin: F2RenamePlugin) {
 		super(app, plugin);
@@ -141,7 +151,62 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 		this.dragPath = null;
+		containerEl.addClass('f2-rename-settings');
 
+		const nav = containerEl.createDiv({
+			cls: 'f2-rename-settings-tabs',
+			attr: { role: 'tablist' },
+		});
+		const panels = containerEl.createDiv({ cls: 'f2-rename-settings-panels' });
+
+		const panelEls = new Map<SettingsTabId, HTMLElement>();
+		const tabButtons = new Map<SettingsTabId, HTMLButtonElement>();
+
+		const showTab = (id: SettingsTabId) => {
+			this.activeTab = id;
+			for (const tab of SETTINGS_TABS) {
+				const panel = panelEls.get(tab.id);
+				const btn = tabButtons.get(tab.id);
+				const active = tab.id === id;
+				panel?.toggleClass('is-active', active);
+				btn?.toggleClass('is-active', active);
+				btn?.setAttr('aria-selected', active ? 'true' : 'false');
+			}
+		};
+
+		for (const tab of SETTINGS_TABS) {
+			const btn = nav.createEl('button', {
+				cls: 'f2-rename-settings-tab',
+				text: t(tab.labelKey),
+				attr: {
+					type: 'button',
+					role: 'tab',
+					'aria-selected': 'false',
+				},
+			});
+			btn.addEventListener('click', () => showTab(tab.id));
+			tabButtons.set(tab.id, btn);
+
+			const panel = panels.createDiv({
+				cls: 'f2-rename-settings-panel',
+				attr: { role: 'tabpanel' },
+			});
+			panelEls.set(tab.id, panel);
+		}
+
+		const general = panelEls.get('general');
+		const features = panelEls.get('features');
+		const properties = panelEls.get('properties');
+		const attachments = panelEls.get('attachments');
+		if (general) this.renderGeneralSettings(general);
+		if (features) this.renderFeatureSettings(features);
+		if (properties) this.renderPropertyFieldsSection(properties);
+		if (attachments) this.renderAttachmentSettings(attachments);
+
+		showTab(this.activeTab);
+	}
+
+	private renderGeneralSettings(containerEl: HTMLElement): void {
 		new Setting(containerEl).setName(t('settings.basic.heading')).setHeading();
 
 		new Setting(containerEl)
@@ -172,7 +237,9 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			settingKey: 'modalMaxHeight',
 			fallback: DEFAULT_MODAL_MAX_HEIGHT,
 		});
+	}
 
+	private renderFeatureSettings(containerEl: HTMLElement): void {
 		new Setting(containerEl)
 			.setName(t('settings.features.heading'))
 			.setHeading();
@@ -195,9 +262,6 @@ export class F2RenameSettingTab extends PluginSettingTab {
 						}),
 				);
 		}
-
-		this.renderAttachmentSettings(containerEl);
-		this.renderPropertyFieldsSection(containerEl);
 	}
 
 	private renderAttachmentSettings(containerEl: HTMLElement): void {

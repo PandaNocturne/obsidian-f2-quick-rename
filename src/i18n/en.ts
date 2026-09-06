@@ -11,6 +11,11 @@ export const en = {
 	'commands.renameAttachments': 'Rename attachments',
 	'menu.f2Rename': 'F2 Quick rename',
 
+	'settings.tab.general': 'General',
+	'settings.tab.features': 'Features',
+	'settings.tab.properties': 'Properties',
+	'settings.tab.attachments': 'Attachments',
+
 	'notice.noOpenFile': 'No file is open',
 	'notice.fullPropertiesMarkdownOnly':
 		'Full properties panel is only supported for Markdown notes',
