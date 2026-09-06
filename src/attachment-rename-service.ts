@@ -13,6 +13,7 @@ import {
 	alreadyMatchesTemplate,
 	buildSuggestedBasename,
 	buildUniqueAttachmentPath,
+	collectAttachmentsFromText,
 	collectNoteAttachments,
 	parseAttachmentExtensions,
 	resolveAttachmentFromText,
@@ -62,6 +63,19 @@ export class AttachmentRenameService {
 			return;
 		}
 
+		if (settings.attachmentSilentMode) {
+			const items = targets.map((file) => ({
+				file,
+				newBasename: buildSuggestedBasename(file, template),
+			}));
+			await this.renameBatch(
+				items,
+				template,
+				settings.attachmentRenameDelayMs,
+			);
+			return;
+		}
+
 		if (targets.length === 1) {
 			const only = targets[0];
 			if (!only) {
@@ -87,22 +101,33 @@ export class AttachmentRenameService {
 	}
 
 	/**
-	 * Reading mode / blank line / no attachment under cursor → all.
+	 * Explicit selection → attachments inside the selection (multi-line OK).
+	 * Reading mode / blank line / no attachment under cursor → all in note.
 	 * Cursor on an attachment line → that file only.
 	 */
 	private resolveTargets(note: TFile, extensions: string[]): TFile[] {
+		const { text, hasExplicitSelection } = this.getEditorContext();
+
+		if (hasExplicitSelection && text.trim()) {
+			return collectAttachmentsFromText(
+				this.app,
+				text,
+				note.path,
+				extensions,
+			);
+		}
+
 		if (this.isMarkdownReadingMode()) {
 			return collectNoteAttachments(this.app, note, extensions);
 		}
 
-		const lineText = this.getActiveLineText();
-		if (lineText === null || !lineText.trim()) {
+		if (!text.trim()) {
 			return collectNoteAttachments(this.app, note, extensions);
 		}
 
 		const current = resolveAttachmentFromText(
 			this.app,
-			lineText,
+			text,
 			note.path,
 			extensions,
 		);
@@ -116,20 +141,35 @@ export class AttachmentRenameService {
 		return view?.getMode() === 'preview';
 	}
 
-	/** Current editor line, or null when no editor. Empty string = blank line. */
-	private getActiveLineText(): string | null {
+	/**
+	 * Editor / window selection context.
+	 * `hasExplicitSelection` is true when the user selected text
+	 * (not the current-line fallback).
+	 */
+	private getEditorContext(): {
+		text: string;
+		hasExplicitSelection: boolean;
+	} {
 		const activeEditor = this.app.workspace.activeEditor;
 		const editor: Editor | null = activeEditor?.editor ?? null;
 		if (!editor) {
 			const winSel = window.getSelection()?.toString() ?? '';
-			return winSel || null;
+			return {
+				text: winSel,
+				hasExplicitSelection: winSel.length > 0,
+			};
 		}
 		try {
 			const selected = editor.getSelection();
-			if (selected) return selected;
-			return editor.getLine(editor.getCursor().line);
+			if (selected) {
+				return { text: selected, hasExplicitSelection: true };
+			}
+			return {
+				text: editor.getLine(editor.getCursor().line),
+				hasExplicitSelection: false,
+			};
 		} catch {
-			return null;
+			return { text: '', hasExplicitSelection: false };
 		}
 	}
 

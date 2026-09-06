@@ -1,6 +1,7 @@
 import { App, TFile, moment, normalizePath } from 'obsidian';
 import {
-	matchSelectionEmbed,
+	isWebUrl,
+	matchAllEmbeds,
 	normalizeSpaces,
 	resolveEmbedFile,
 } from './embed';
@@ -69,11 +70,36 @@ export function resolveAttachmentFromText(
 	sourcePath: string,
 	extensions: string[],
 ): TFile | null {
-	const embed = matchSelectionEmbed(text);
-	if (!embed || embed.linkpath.startsWith('http')) return null;
-	const dest = resolveEmbedFile(app, embed.linkpath, sourcePath);
-	if (!dest || !isAttachmentFile(dest, extensions)) return null;
-	return dest;
+	const files = collectAttachmentsFromText(
+		app,
+		text,
+		sourcePath,
+		extensions,
+	);
+	return files[0] ?? null;
+}
+
+/**
+ * Collect unique attachments referenced anywhere in `text`
+ * (supports multi-line selections with several embeds/links).
+ */
+export function collectAttachmentsFromText(
+	app: App,
+	text: string,
+	sourcePath: string,
+	extensions: string[],
+): TFile[] {
+	const seen = new Set<string>();
+	const files: TFile[] = [];
+	for (const embed of matchAllEmbeds(text)) {
+		if (isWebUrl(embed.linkpath)) continue;
+		const dest = resolveEmbedFile(app, embed.linkpath, sourcePath);
+		if (!dest || !isAttachmentFile(dest, extensions)) continue;
+		if (seen.has(dest.path)) continue;
+		seen.add(dest.path);
+		files.push(dest);
+	}
+	return files;
 }
 
 /**

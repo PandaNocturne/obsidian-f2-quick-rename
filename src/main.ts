@@ -61,6 +61,9 @@ export default class F2RenamePlugin extends Plugin {
 			this.settings.attachmentRenameDelayMs =
 				DEFAULT_ATTACHMENT_RENAME_DELAY_MS;
 		}
+		if (typeof this.settings.attachmentSilentMode !== 'boolean') {
+			this.settings.attachmentSilentMode = false;
+		}
 
 		if (!Array.isArray(this.settings.propertyFields)) {
 			this.settings.propertyFields = DEFAULT_PROPERTY_FIELDS.map((item) =>
@@ -85,7 +88,7 @@ export default class F2RenamePlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: 'f1-rename-attachments',
+			id: 'rename-attachments',
 			name: t('commands.renameAttachments'),
 			hotkeys: [{ modifiers: [], key: 'F1' }],
 			callback: () => {

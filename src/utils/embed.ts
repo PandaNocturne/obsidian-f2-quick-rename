@@ -88,37 +88,63 @@ function fromMarkdownMatch(match: RegExpMatchArray): EmbedMatch | null {
  * - `[title](path.md)` / `[title](https://example.com)`
  */
 export function matchSelectionEmbed(text: string): EmbedMatch | null {
-	const trimmed = text.trim();
-	if (!trimmed) return null;
+	const all = matchAllEmbeds(text);
+	return all[0] ?? null;
+}
 
-	const wikiRe = /(!?)\[\[([^\]|#]+)(#[^\]|]*)?(?:\|([^\]]*))?\]\]/;
-	const mdRe = /(!?)\[([^\]]*)\]\(([^)\n]+)\)/;
+/**
+ * Find every wiki / markdown link or embed in `text` (multi-line safe).
+ * Overlapping matches are skipped (earlier / longer wins by start index).
+ */
+export function matchAllEmbeds(text: string): EmbedMatch[] {
+	if (!text) return [];
 
-	const anchoredWiki = trimmed.match(new RegExp(`^${wikiRe.source}`));
-	if (anchoredWiki) {
-		const result = fromWikiMatch(anchoredWiki);
-		if (result) return result;
+	const wikiRe = /(!?)\[\[([^\]|#]+)(#[^\]|]*)?(?:\|([^\]]*))?\]\]/g;
+	const mdRe = /(!?)\[([^\]]*)\]\(([^)\n]+)\)/g;
+
+	type Hit = {
+		start: number;
+		end: number;
+		kind: 'wiki' | 'markdown';
+		match: RegExpExecArray;
+	};
+	const hits: Hit[] = [];
+
+	let match: RegExpExecArray | null;
+	wikiRe.lastIndex = 0;
+	while ((match = wikiRe.exec(text)) !== null) {
+		hits.push({
+			start: match.index,
+			end: match.index + match[0].length,
+			kind: 'wiki',
+			match,
+		});
+	}
+	mdRe.lastIndex = 0;
+	while ((match = mdRe.exec(text)) !== null) {
+		hits.push({
+			start: match.index,
+			end: match.index + match[0].length,
+			kind: 'markdown',
+			match,
+		});
 	}
 
-	const anchoredMd = trimmed.match(new RegExp(`^${mdRe.source}`));
-	if (anchoredMd) {
-		const result = fromMarkdownMatch(anchoredMd);
-		if (result) return result;
-	}
+	hits.sort((a, b) => a.start - b.start || b.end - a.end);
 
-	const looseWiki = trimmed.match(wikiRe);
-	if (looseWiki) {
-		const result = fromWikiMatch(looseWiki);
-		if (result) return result;
+	const results: EmbedMatch[] = [];
+	let cursor = 0;
+	for (const hit of hits) {
+		if (hit.start < cursor) continue;
+		const parsed =
+			hit.kind === 'wiki'
+				? fromWikiMatch(hit.match)
+				: fromMarkdownMatch(hit.match);
+		if (!parsed) continue;
+		results.push(parsed);
+		cursor = hit.end;
 	}
-
-	const looseMd = trimmed.match(mdRe);
-	if (looseMd) {
-		const result = fromMarkdownMatch(looseMd);
-		if (result) return result;
-	}
-
-	return null;
+	return results;
 }
 
 export interface RebuildEmbedOptions {

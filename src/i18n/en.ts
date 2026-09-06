@@ -139,18 +139,21 @@ export const en = {
 	'settings.features.editExtension.desc':
 		'When enabled, double-click the extension after the filename in the rename panel to edit it (for example .md). Off by default.',
 
-	'settings.attachments.heading': 'Attachment rename (F1)',
+	'settings.attachments.heading': 'Attachment rename',
 	'settings.attachments.intro':
-		'F1 renames attachments linked or embedded in the current note. Reading mode or a blank line targets all matches; the cursor on an attachment targets that file only.',
+		'Rename attachments linked or embedded in the current note. Reading mode or a blank line targets all matches; the cursor on an attachment targets that file only; a multi-line selection targets attachments inside the selection. Bind or change the hotkey under Settings → Hotkeys.',
 	'settings.attachments.extensions.name': 'Attachment extensions',
 	'settings.attachments.extensions.desc':
 		'Comma-separated list (dots optional). Example: png,jpg,jpeg,avif,gif,webp,mp4,bmp,tif',
 	'settings.attachments.template.name': 'Name template',
 	'settings.attachments.template.desc':
-		'Suggested basename. Tokens: {ctime:format}, {mtime:format}, {name}, {ext}. Example: File-{ctime:YYYYMMDDhhmmssSSS}',
+		'Suggested basename. Available tokens:\n{ctime:format} — created time (moment format)\n{mtime:format} — modified time\n{name} — original basename\n{ext} — extension with dot\nExample: File-{ctime:YYYYMMDDhhmmssSSS}',
 	'settings.attachments.delay.name': 'Batch rename delay (ms)',
 	'settings.attachments.delay.desc':
 		'Pause between each rename in a batch to avoid vault update races. Default 500.',
+	'settings.attachments.silentMode.name': 'Silent mode',
+	'settings.attachments.silentMode.desc':
+		'When enabled, apply the name template automatically without a confirmation panel. Off by default.',
 	'settings.attachments.reset': 'Reset to default',
 
 	'settings.propertyFields.heading': 'Document properties',

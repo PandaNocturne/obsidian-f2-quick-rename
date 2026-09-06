@@ -131,18 +131,21 @@ export const zhCN: Record<TranslationKey, string> = {
 	'settings.features.editExtension.desc':
 		'开启后，可在重命名面板中双击文件名后的扩展名进行编辑（例如 .md）。默认关闭。',
 
-	'settings.attachments.heading': '附件重命名（F1）',
+	'settings.attachments.heading': '附件重命名',
 	'settings.attachments.intro':
-		'F1 重命名当前笔记中链接或嵌入的附件。阅读模式或空白行处理全部匹配项；光标落在附件上时只处理当前文件。',
+		'重命名当前笔记中链接或嵌入的附件。阅读模式或空白行处理全部匹配项；光标落在附件上时只处理当前文件；选中多行时只处理选区内的附件。可在「设置 → 快捷键」中绑定或修改快捷键。',
 	'settings.attachments.extensions.name': '可识别扩展名',
 	'settings.attachments.extensions.desc':
 		'逗号分隔（点号可省略）。例如：png,jpg,jpeg,avif,gif,webp,mp4,bmp,tif',
 	'settings.attachments.template.name': '命名模板',
 	'settings.attachments.template.desc':
-		'建议主文件名。占位符：{ctime:format}、{mtime:format}、{name}、{ext}。例如：File-{ctime:YYYYMMDDhhmmssSSS}',
+		'建议主文件名。可用占位符：\n{ctime:format} — 创建时间（moment 格式）\n{mtime:format} — 修改时间\n{name} — 原主文件名\n{ext} — 带点的扩展名\n例如：File-{ctime:YYYYMMDDhhmmssSSS}',
 	'settings.attachments.delay.name': '批量重命名间隔（毫秒）',
 	'settings.attachments.delay.desc':
 		'批量重命名时每次之间的等待，降低库更新冲突。默认 500。',
+	'settings.attachments.silentMode.name': '静默模式',
+	'settings.attachments.silentMode.desc':
+		'开启后按命名模板自动重命名，不弹出确认面板。默认关闭。',
 	'settings.attachments.reset': '重置为默认',
 
 	'settings.propertyFields.heading': '文档属性',

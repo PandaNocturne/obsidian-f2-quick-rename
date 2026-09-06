@@ -957,7 +957,7 @@
 	font-weight: var(--font-medium);
 }
 
-/* Attachment batch rename (F1) */
+/* Attachment batch rename */
 
 .f2-attach-list {
 	display: flex;
@@ -1001,14 +1001,17 @@
 
 .f2-attach-field {
 	display: flex;
-	flex-direction: column;
-	gap: 0.25rem;
+	flex-direction: row;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 0;
 }
 
 .f2-attach-input-wrap {
 	display: flex;
 	align-items: center;
 	gap: 0.25rem;
+	flex: 1 1 auto;
 	min-width: 0;
 }
 
@@ -1026,6 +1029,28 @@
 
 .setting-item .f2-rename-setting-wide {
 	width: min(100%, 28rem);
+}
+
+.f2-rename-setting-full-line {
+	flex-wrap: wrap;
+	align-items: flex-start;
+}
+
+.f2-rename-setting-full-line .setting-item-info {
+	flex: 1 1 100%;
+	margin-bottom: 0.45rem;
+}
+
+.f2-rename-setting-full-line .setting-item-control {
+	flex: 1 1 100%;
+	justify-content: flex-start;
+	gap: 0.35rem;
+}
+
+.f2-rename-setting-full-line .f2-rename-setting-full-input {
+	flex: 1 1 auto;
+	width: 100%;
+	min-width: 0;
 }
 
 /* Settings tabs */

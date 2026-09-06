@@ -274,9 +274,22 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			cls: 'setting-item-description',
 		});
 
+		new Setting(containerEl)
+			.setName(t('settings.attachments.silentMode.name'))
+			.setDesc(t('settings.attachments.silentMode.desc'))
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.attachmentSilentMode)
+					.onChange(async (value) => {
+						this.plugin.settings.attachmentSilentMode = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
 		const extensions = new Setting(containerEl)
 			.setName(t('settings.attachments.extensions.name'))
 			.setDesc(t('settings.attachments.extensions.desc'));
+		extensions.settingEl.addClass('f2-rename-setting-full-line');
 		extensions.addText((text) => {
 			text
 				.setPlaceholder(DEFAULT_ATTACHMENT_EXTENSIONS)
@@ -285,6 +298,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 					this.plugin.settings.attachmentExtensions = value;
 					await this.plugin.saveSettings();
 				});
+			text.inputEl.addClass('f2-rename-setting-full-input');
 		});
 		extensions.addExtraButton((btn) =>
 			btn
@@ -300,7 +314,8 @@ export class F2RenameSettingTab extends PluginSettingTab {
 
 		const template = new Setting(containerEl)
 			.setName(t('settings.attachments.template.name'))
-			.setDesc(t('settings.attachments.template.desc'));
+			.setDesc(multiLineSettingDesc(t('settings.attachments.template.desc')));
+		template.settingEl.addClass('f2-rename-setting-full-line');
 		template.addText((text) => {
 			text
 				.setPlaceholder(DEFAULT_ATTACHMENT_NAME_TEMPLATE)
@@ -309,7 +324,7 @@ export class F2RenameSettingTab extends PluginSettingTab {
 					this.plugin.settings.attachmentNameTemplate = value;
 					await this.plugin.saveSettings();
 				});
-			text.inputEl.addClass('f2-rename-setting-wide');
+			text.inputEl.addClass('f2-rename-setting-full-input');
 		});
 		template.addExtraButton((btn) =>
 			btn
@@ -1164,6 +1179,16 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		await this.plugin.saveSettings();
 		this.display();
 	}
+}
+
+function multiLineSettingDesc(text: string): DocumentFragment {
+	const frag = document.createDocumentFragment();
+	const lines = text.split('\n');
+	for (let i = 0; i < lines.length; i++) {
+		if (i > 0) frag.appendChild(document.createElement('br'));
+		frag.appendChild(document.createTextNode(lines[i] ?? ''));
+	}
+	return frag;
 }
 
 function clearDropTargets(parent: HTMLElement | null): void {
