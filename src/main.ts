@@ -1,5 +1,6 @@
 import { Plugin, TFile } from 'obsidian';
 import { setLocalePreference, t } from './i18n';
+import { AttachmentRenameService } from './attachment-rename-service';
 import { RenameService } from './rename-service';
 import {
 	DEFAULT_PROPERTY_FIELDS,
@@ -7,6 +8,11 @@ import {
 	normalizePropertySettingsItem,
 	type F2RenameSettings,
 } from './settings';
+import {
+	DEFAULT_ATTACHMENT_EXTENSIONS,
+	DEFAULT_ATTACHMENT_NAME_TEMPLATE,
+	DEFAULT_ATTACHMENT_RENAME_DELAY_MS,
+} from './utils/attachments';
 import {
 	DEFAULT_MODAL_MAX_HEIGHT,
 	DEFAULT_MODAL_WIDTH,
@@ -17,6 +23,7 @@ import { F2RenameSettingTab } from './ui/settings-tab';
 export default class F2RenamePlugin extends Plugin {
 	settings!: F2RenameSettings;
 	private renameService!: RenameService;
+	private attachmentRenameService!: AttachmentRenameService;
 
 	async onload() {
 		const saved = (await this.loadData()) as Partial<F2RenameSettings> | null;
@@ -39,6 +46,22 @@ export default class F2RenamePlugin extends Plugin {
 			DEFAULT_MODAL_MAX_HEIGHT,
 		);
 
+		if (typeof this.settings.attachmentExtensions !== 'string') {
+			this.settings.attachmentExtensions = DEFAULT_ATTACHMENT_EXTENSIONS;
+		}
+		if (typeof this.settings.attachmentNameTemplate !== 'string') {
+			this.settings.attachmentNameTemplate =
+				DEFAULT_ATTACHMENT_NAME_TEMPLATE;
+		}
+		if (
+			typeof this.settings.attachmentRenameDelayMs !== 'number' ||
+			!Number.isFinite(this.settings.attachmentRenameDelayMs) ||
+			this.settings.attachmentRenameDelayMs < 0
+		) {
+			this.settings.attachmentRenameDelayMs =
+				DEFAULT_ATTACHMENT_RENAME_DELAY_MS;
+		}
+
 		if (!Array.isArray(this.settings.propertyFields)) {
 			this.settings.propertyFields = DEFAULT_PROPERTY_FIELDS.map((item) =>
 				normalizePropertySettingsItem(item),
@@ -50,6 +73,7 @@ export default class F2RenamePlugin extends Plugin {
 		}
 
 		this.renameService = new RenameService(this);
+		this.attachmentRenameService = new AttachmentRenameService(this);
 
 		this.addCommand({
 			id: 'f2-rename',
@@ -57,6 +81,15 @@ export default class F2RenamePlugin extends Plugin {
 			hotkeys: [{ modifiers: [], key: 'F2' }],
 			callback: () => {
 				void this.renameService.run();
+			},
+		});
+
+		this.addCommand({
+			id: 'f1-rename-attachments',
+			name: t('commands.renameAttachments'),
+			hotkeys: [{ modifiers: [], key: 'F1' }],
+			callback: () => {
+				void this.attachmentRenameService.run();
 			},
 		});
 

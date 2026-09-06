@@ -8,11 +8,19 @@ export const en = {
 
 	'commands.renameFileOrEmbed': 'Rename file or embed',
 	'commands.renameAndEditAllProperties': 'Rename and edit all properties',
+	'commands.renameAttachments': 'Rename attachments',
 	'menu.f2Rename': 'F2 Quick rename',
 
 	'notice.noOpenFile': 'No file is open',
 	'notice.fullPropertiesMarkdownOnly':
 		'Full properties panel is only supported for Markdown notes',
+	'notice.attachmentsMarkdownOnly':
+		'Attachment rename is only supported for Markdown notes',
+	'notice.noAttachmentsFound': 'No matching attachments found in this note',
+	'notice.attachmentRenameProgress':
+		'Renaming attachments ({current}/{total})\nRenamed: {renamed} | Skipped: {skipped} | Failed: {failed}\n{status}',
+	'notice.attachmentRenameDone':
+		'Attachments done ({total}/{total})\nRenamed: {renamed} | Skipped: {skipped} | Failed: {failed}',
 	'notice.cannotEditLinkNoEditor':
 		'Cannot edit link: no editor available',
 	'notice.cannotEditAliasNoEditor':
@@ -44,6 +52,10 @@ export const en = {
 	'modal.addProperty': 'Add property',
 	'modal.section.properties': 'Properties',
 	'modal.section.more': 'More',
+	'modal.attachments.title': 'Rename attachments',
+	'modal.attachments.currentName': 'Current',
+	'modal.attachments.newName': 'New name',
+	'modal.attachments.resetSuggestions': 'Reset suggestions',
 
 	'tooltip.doubleClickToEdit': 'Double-click to edit',
 	'tooltip.clickIconOpenDoubleClickEdit':
@@ -121,6 +133,20 @@ export const en = {
 	'settings.features.editExtension.name': 'Double-click to edit extension',
 	'settings.features.editExtension.desc':
 		'When enabled, double-click the extension after the filename in the rename panel to edit it (for example .md). Off by default.',
+
+	'settings.attachments.heading': 'Attachment rename (F1)',
+	'settings.attachments.intro':
+		'F1 renames attachments linked or embedded in the current note. Reading mode or a blank line targets all matches; the cursor on an attachment targets that file only.',
+	'settings.attachments.extensions.name': 'Attachment extensions',
+	'settings.attachments.extensions.desc':
+		'Comma-separated list (dots optional). Example: png,jpg,jpeg,avif,gif,webp,mp4,bmp,tif',
+	'settings.attachments.template.name': 'Name template',
+	'settings.attachments.template.desc':
+		'Suggested basename. Tokens: {ctime:format}, {mtime:format}, {name}, {ext}. Example: File-{ctime:YYYYMMDDhhmmssSSS}',
+	'settings.attachments.delay.name': 'Batch rename delay (ms)',
+	'settings.attachments.delay.desc':
+		'Pause between each rename in a batch to avoid vault update races. Default 500.',
+	'settings.attachments.reset': 'Reset to default',
 
 	'settings.propertyFields.heading': 'Document properties',
 	'settings.propertyFields.defaultCollapsed.name': 'Collapse by default',

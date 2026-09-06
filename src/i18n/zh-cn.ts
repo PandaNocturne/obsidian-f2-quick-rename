@@ -10,10 +10,17 @@ export const zhCN: Record<TranslationKey, string> = {
 
 	'commands.renameFileOrEmbed': '重命名文件或嵌入',
 	'commands.renameAndEditAllProperties': '重命名并编辑全部属性',
+	'commands.renameAttachments': '重命名附件',
 	'menu.f2Rename': 'F2 快速重命名',
 
 	'notice.noOpenFile': '没有打开的文件',
 	'notice.fullPropertiesMarkdownOnly': '仅支持 Markdown 笔记的全属性面板',
+	'notice.attachmentsMarkdownOnly': '附件重命名仅支持 Markdown 笔记',
+	'notice.noAttachmentsFound': '当前笔记中未找到可识别的附件',
+	'notice.attachmentRenameProgress':
+		'附件重命名 ({current}/{total})\n重命名: {renamed} | 跳过: {skipped} | 失败: {failed}\n{status}',
+	'notice.attachmentRenameDone':
+		'附件处理完成 ({total}/{total})\n重命名: {renamed} | 跳过: {skipped} | 失败: {failed}',
 	'notice.cannotEditLinkNoEditor': '无法编辑链接：当前没有可用的编辑器',
 	'notice.cannotEditAliasNoEditor': '无法编辑别名：当前没有可用的编辑器',
 	'notice.urlCannotBeEmpty': 'URL 不能为空',
@@ -40,6 +47,10 @@ export const zhCN: Record<TranslationKey, string> = {
 	'modal.addProperty': '添加属性',
 	'modal.section.properties': '属性',
 	'modal.section.more': '更多',
+	'modal.attachments.title': '重命名附件',
+	'modal.attachments.currentName': '当前',
+	'modal.attachments.newName': '新名称',
+	'modal.attachments.resetSuggestions': '重置建议名',
 
 	'tooltip.doubleClickToEdit': '双击编辑',
 	'tooltip.clickIconOpenDoubleClickEdit': '点击图标打开，双击编辑',
@@ -114,6 +125,20 @@ export const zhCN: Record<TranslationKey, string> = {
 	'settings.features.editExtension.name': '双击修改扩展名',
 	'settings.features.editExtension.desc':
 		'开启后，可在重命名面板中双击文件名后的扩展名进行编辑（例如 .md）。默认关闭。',
+
+	'settings.attachments.heading': '附件重命名（F1）',
+	'settings.attachments.intro':
+		'F1 重命名当前笔记中链接或嵌入的附件。阅读模式或空白行处理全部匹配项；光标落在附件上时只处理当前文件。',
+	'settings.attachments.extensions.name': '可识别扩展名',
+	'settings.attachments.extensions.desc':
+		'逗号分隔（点号可省略）。例如：png,jpg,jpeg,avif,gif,webp,mp4,bmp,tif',
+	'settings.attachments.template.name': '命名模板',
+	'settings.attachments.template.desc':
+		'建议主文件名。占位符：{ctime:format}、{mtime:format}、{name}、{ext}。例如：File-{ctime:YYYYMMDDhhmmssSSS}',
+	'settings.attachments.delay.name': '批量重命名间隔（毫秒）',
+	'settings.attachments.delay.desc':
+		'批量重命名时每次之间的等待，降低库更新冲突。默认 500。',
+	'settings.attachments.reset': '重置为默认',
 
 	'settings.propertyFields.heading': '文档属性',
 	'settings.propertyFields.defaultCollapsed.name': '默认折叠',

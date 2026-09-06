@@ -16,6 +16,11 @@ import {
 	type PropertySettingsItem,
 } from '../settings';
 import {
+	DEFAULT_ATTACHMENT_EXTENSIONS,
+	DEFAULT_ATTACHMENT_NAME_TEMPLATE,
+	DEFAULT_ATTACHMENT_RENAME_DELAY_MS,
+} from '../utils/attachments';
+import {
 	DEFAULT_MODAL_MAX_HEIGHT,
 	DEFAULT_MODAL_WIDTH,
 	normalizeCssLengthList,
@@ -191,7 +196,97 @@ export class F2RenameSettingTab extends PluginSettingTab {
 				);
 		}
 
+		this.renderAttachmentSettings(containerEl);
 		this.renderPropertyFieldsSection(containerEl);
+	}
+
+	private renderAttachmentSettings(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName(t('settings.attachments.heading'))
+			.setHeading();
+
+		containerEl.createEl('p', {
+			text: t('settings.attachments.intro'),
+			cls: 'setting-item-description',
+		});
+
+		const extensions = new Setting(containerEl)
+			.setName(t('settings.attachments.extensions.name'))
+			.setDesc(t('settings.attachments.extensions.desc'));
+		extensions.addText((text) => {
+			text
+				.setPlaceholder(DEFAULT_ATTACHMENT_EXTENSIONS)
+				.setValue(this.plugin.settings.attachmentExtensions)
+				.onChange(async (value) => {
+					this.plugin.settings.attachmentExtensions = value;
+					await this.plugin.saveSettings();
+				});
+		});
+		extensions.addExtraButton((btn) =>
+			btn
+				.setIcon('rotate-ccw')
+				.setTooltip(t('settings.attachments.reset'))
+				.onClick(async () => {
+					this.plugin.settings.attachmentExtensions =
+						DEFAULT_ATTACHMENT_EXTENSIONS;
+					await this.plugin.saveSettings();
+					this.display();
+				}),
+		);
+
+		const template = new Setting(containerEl)
+			.setName(t('settings.attachments.template.name'))
+			.setDesc(t('settings.attachments.template.desc'));
+		template.addText((text) => {
+			text
+				.setPlaceholder(DEFAULT_ATTACHMENT_NAME_TEMPLATE)
+				.setValue(this.plugin.settings.attachmentNameTemplate)
+				.onChange(async (value) => {
+					this.plugin.settings.attachmentNameTemplate = value;
+					await this.plugin.saveSettings();
+				});
+			text.inputEl.addClass('f2-rename-setting-wide');
+		});
+		template.addExtraButton((btn) =>
+			btn
+				.setIcon('rotate-ccw')
+				.setTooltip(t('settings.attachments.reset'))
+				.onClick(async () => {
+					this.plugin.settings.attachmentNameTemplate =
+						DEFAULT_ATTACHMENT_NAME_TEMPLATE;
+					await this.plugin.saveSettings();
+					this.display();
+				}),
+		);
+
+		const delay = new Setting(containerEl)
+			.setName(t('settings.attachments.delay.name'))
+			.setDesc(t('settings.attachments.delay.desc'));
+		delay.addText((text) => {
+			text
+				.setPlaceholder(String(DEFAULT_ATTACHMENT_RENAME_DELAY_MS))
+				.setValue(String(this.plugin.settings.attachmentRenameDelayMs))
+				.onChange(async (value) => {
+					const parsed = Number.parseInt(value.trim(), 10);
+					if (!Number.isFinite(parsed) || parsed < 0) return;
+					this.plugin.settings.attachmentRenameDelayMs = parsed;
+					await this.plugin.saveSettings();
+				});
+			text.inputEl.type = 'number';
+			text.inputEl.min = '0';
+			text.inputEl.step = '50';
+		});
+		delay.addExtraButton((btn) =>
+			btn
+				.setIcon('rotate-ccw')
+				.setTooltip(t('settings.attachments.reset'))
+				.onClick(async () => {
+					this.plugin.settings.attachmentRenameDelayMs =
+						DEFAULT_ATTACHMENT_RENAME_DELAY_MS;
+					await this.plugin.saveSettings();
+					this.display();
+				}),
+		);
 	}
 
 	private addCssSizeSetting(

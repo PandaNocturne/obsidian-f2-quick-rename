@@ -956,3 +956,74 @@
 .f2-rename-btn-primary {
 	font-weight: var(--font-medium);
 }
+
+/* Attachment batch rename (F1) */
+
+.f2-attach-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	padding: 0.25rem 0.15rem 0.5rem;
+}
+
+.f2-attach-row {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	padding: 0.65rem 0.75rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+}
+
+.f2-attach-current {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	min-width: 0;
+}
+
+.f2-attach-current-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.f2-attach-label {
+	flex-shrink: 0;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+}
+
+.f2-attach-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.f2-attach-input-wrap {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	min-width: 0;
+}
+
+.f2-attach-input-wrap .f2-attach-input {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.f2-attach-input-wrap .f2-rename-ext {
+	flex-shrink: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	user-select: none;
+}
+
+.setting-item .f2-rename-setting-wide {
+	width: min(100%, 28rem);
+}

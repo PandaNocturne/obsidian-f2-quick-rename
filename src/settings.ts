@@ -1,6 +1,11 @@
 import type { LocalePreference } from './i18n';
 import { t } from './i18n';
 import {
+	DEFAULT_ATTACHMENT_EXTENSIONS,
+	DEFAULT_ATTACHMENT_NAME_TEMPLATE,
+	DEFAULT_ATTACHMENT_RENAME_DELAY_MS,
+} from './utils/attachments';
+import {
 	DEFAULT_MODAL_MAX_HEIGHT,
 	DEFAULT_MODAL_WIDTH,
 } from './utils/css-size';
@@ -155,6 +160,18 @@ export interface F2RenameSettings {
 	 * Rename panel max height. Comma-separated CSS lengths use CSS `min()`.
 	 */
 	modalMaxHeight: string;
+	/**
+	 * Comma-separated attachment extensions recognized by F1
+	 * (e.g. png,jpg,mp4). Dots optional.
+	 */
+	attachmentExtensions: string;
+	/**
+	 * Suggested basename template for F1 attachment rename.
+	 * Tokens: `{ctime:format}`, `{mtime:format}`, `{name}`, `{ext}`.
+	 */
+	attachmentNameTemplate: string;
+	/** Delay in ms between batch attachment renames. */
+	attachmentRenameDelayMs: number;
 	/** Frontmatter keys / separators / rows editable in the rename panel. */
 	propertyFields: PropertySettingsItem[];
 }
@@ -197,6 +214,9 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	editExtension: false,
 	modalWidth: DEFAULT_MODAL_WIDTH,
 	modalMaxHeight: DEFAULT_MODAL_MAX_HEIGHT,
+	attachmentExtensions: DEFAULT_ATTACHMENT_EXTENSIONS,
+	attachmentNameTemplate: DEFAULT_ATTACHMENT_NAME_TEMPLATE,
+	attachmentRenameDelayMs: DEFAULT_ATTACHMENT_RENAME_DELAY_MS,
 	propertyFields: DEFAULT_PROPERTY_FIELDS.map((item) =>
 		clonePropertySettingsItem(item),
 	),
