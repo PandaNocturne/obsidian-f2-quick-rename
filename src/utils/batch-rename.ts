@@ -155,6 +155,61 @@ export function removeNumbering(basename: string): string {
 	return result;
 }
 
+/** Strip bracket pairs and their inner text (ASCII + CJK brackets). */
+export function removeBracketContent(text: string): string {
+	return text
+		.replace(
+			/[(\[{（【［《「『｛][^)\]}）】］》」』｝]*[)\]}）】］》」』｝]/g,
+			'',
+		)
+		.replace(/[_\-\s.·•]{2,}/g, (chunk) => {
+			if (chunk.includes('_')) return '_';
+			if (chunk.includes('-')) return '-';
+			if (chunk.includes('.')) return '.';
+			return ' ';
+		})
+		.replace(/^[_\-.\s]+|[_\-.\s]+$/g, '')
+		.trim();
+}
+
+/**
+ * Keep letters, digits, CJK, spaces, underscore and hyphen; drop other symbols.
+ */
+export function removeSpecialChars(text: string): string {
+	return text
+		.replace(
+			/[^\w\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\s\-]+/g,
+			'',
+		)
+		.replace(/\s{2,}/g, ' ')
+		.replace(/^[_\-\s]+|[_\-\s]+$/g, '')
+		.trim();
+}
+
+/** Convert fullwidth ASCII / ideographic space to halfwidth. */
+export function fullwidthToHalfwidth(text: string): string {
+	return text
+		.replace(/[\uFF01-\uFF5E]/g, (ch) =>
+			String.fromCharCode(ch.charCodeAt(0) - 0xfee0),
+		)
+		.replace(/\u3000/g, ' ');
+}
+
+/** Collapse runs of whitespace and trim. */
+export function collapseSpaces(text: string): string {
+	return text.replace(/\s+/g, ' ').trim();
+}
+
+/** Replace whitespace runs with a single underscore. */
+export function spacesToUnderscore(text: string): string {
+	return text.replace(/\s+/g, '_').replace(/_+/g, '_');
+}
+
+/** Replace underscore runs with a single space. */
+export function underscoresToSpaces(text: string): string {
+	return text.replace(/_+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /**
  * Insert a space between CJK characters and Latin letters / digits
  * (both directions). Does not duplicate existing spaces.
@@ -167,9 +222,47 @@ export function addSpaceBetweenCjkAndLatin(text: string): string {
 		.replace(new RegExp(`([${latin}])([${cjk}])`, 'g'), '$1 $2');
 }
 
-export interface BatchTextProcessOptions {
-	removeNumbering?: boolean;
-	spaceCjkLatin?: boolean;
+export type BatchTextProcessId =
+	| 'removeNumbering'
+	| 'removeBrackets'
+	| 'removeSpecial'
+	| 'fullwidthToHalf'
+	| 'collapseSpaces'
+	| 'spacesToUnderscore'
+	| 'underscoresToSpaces'
+	| 'spaceCjkLatin';
+
+/** UI / apply order for text-process chips. */
+export const BATCH_TEXT_PROCESS_IDS: ReadonlyArray<BatchTextProcessId> = [
+	'removeNumbering',
+	'removeBrackets',
+	'removeSpecial',
+	'fullwidthToHalf',
+	'collapseSpaces',
+	'spacesToUnderscore',
+	'underscoresToSpaces',
+	'spaceCjkLatin',
+];
+
+export type BatchTextProcessOptions = Partial<
+	Record<BatchTextProcessId, boolean>
+>;
+
+/** Apply enabled text-process transforms in a fixed order. */
+export function applyTextProcesses(
+	basename: string,
+	opts: BatchTextProcessOptions,
+): string {
+	let base = basename;
+	if (opts.removeNumbering) base = removeNumbering(base);
+	if (opts.removeBrackets) base = removeBracketContent(base);
+	if (opts.removeSpecial) base = removeSpecialChars(base);
+	if (opts.fullwidthToHalf) base = fullwidthToHalfwidth(base);
+	if (opts.collapseSpaces) base = collapseSpaces(base);
+	if (opts.spacesToUnderscore) base = spacesToUnderscore(base);
+	if (opts.underscoresToSpaces) base = underscoresToSpaces(base);
+	if (opts.spaceCjkLatin) base = addSpaceBetweenCjkAndLatin(base);
+	return base;
 }
 
 /**
@@ -194,6 +287,7 @@ export function applyBatchProcessStep(
 	const next = new Map(workingNames);
 	let stepError: 'invalid-regex' | undefined;
 	const process = opts.textProcess ?? {};
+	const hasProcess = BATCH_TEXT_PROCESS_IDS.some((id) => process[id]);
 
 	files.forEach((file, i) => {
 		const current = workingNames.get(file.path) ?? file.name;
@@ -222,11 +316,9 @@ export function applyBatchProcessStep(
 			});
 		}
 
-		if (process.removeNumbering || process.spaceCjkLatin) {
+		if (hasProcess) {
 			const split = splitWorkingLeafName(file, newName);
-			let base = split.name;
-			if (process.removeNumbering) base = removeNumbering(base);
-			if (process.spaceCjkLatin) base = addSpaceBetweenCjkAndLatin(base);
+			const base = applyTextProcesses(split.name, process);
 			newName = `${base}${split.ext}`;
 		}
 

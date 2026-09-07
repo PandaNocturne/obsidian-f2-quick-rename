@@ -107,6 +107,20 @@ export const zhCN: Record<TranslationKey, string> = {
 	'modal.batch.removeNumbering': '移除编号',
 	'modal.batch.removeNumberingHint':
 		'去掉文件名主体中的数字及带编号的括号',
+	'modal.batch.removeBrackets': '移除括号内容',
+	'modal.batch.removeBracketsHint': '去掉各类括号及其内部文字',
+	'modal.batch.removeSpecial': '移除特殊符号',
+	'modal.batch.removeSpecialHint':
+		'保留中英文、数字、空格、下划线与连字符，去掉其他符号',
+	'modal.batch.fullwidthToHalf': '全角转半角',
+	'modal.batch.fullwidthToHalfHint':
+		'将全角英数符号与全角空格转为半角',
+	'modal.batch.collapseSpaces': '压缩空格',
+	'modal.batch.collapseSpacesHint': '连续空白合并为一个空格并去掉首尾空白',
+	'modal.batch.spacesToUnderscore': '空格转下划线',
+	'modal.batch.spacesToUnderscoreHint': '把空格替换为下划线',
+	'modal.batch.underscoresToSpaces': '下划线转空格',
+	'modal.batch.underscoresToSpacesHint': '把下划线替换为空格',
 	'modal.batch.spaceCjkLatin': '中英文之间添加空格',
 	'modal.batch.spaceCjkLatinHint':
 		'在中文与英文/数字相邻处插入空格',

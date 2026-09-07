@@ -2,12 +2,15 @@ import { App, Modal, Notice, TFile, setIcon } from 'obsidian';
 import { t } from '../i18n';
 import {
 	BATCH_PLACEHOLDERS,
+	BATCH_TEXT_PROCESS_IDS,
 	DEFAULT_BATCH_NAME_TEMPLATE,
 	applyBatchProcessStep,
 	previewFromWorkingNames,
 	type BatchRenameMode,
 	type BatchRenamePreview,
 	type BatchTextCase,
+	type BatchTextProcessId,
+	type BatchTextProcessOptions,
 } from '../utils/batch-rename';
 import {
 	DEFAULT_MODAL_MAX_HEIGHT,
@@ -49,8 +52,7 @@ export class BatchRenameModal extends Modal {
 	private find = '';
 	private replace = '';
 	private useRegex = false;
-	private removeNumbering = false;
-	private spaceCjkLatin = false;
+	private textProcess: BatchTextProcessOptions = {};
 	/** Header sort: 0 = list order, 1 = A→Z, -1 = Z→A. */
 	private nameSort: 0 | 1 | -1 = 0;
 	private dragFromIndex: number | null = null;
@@ -76,8 +78,7 @@ export class BatchRenameModal extends Modal {
 	private clearBtn!: HTMLButtonElement;
 	private modeButtons = new Map<BatchRenameMode, HTMLButtonElement>();
 	private caseButtons = new Map<BatchTextCase, HTMLButtonElement>();
-	private removeNumberingBtn!: HTMLButtonElement;
-	private spaceCjkLatinBtn!: HTMLButtonElement;
+	private processButtons = new Map<BatchTextProcessId, HTMLButtonElement>();
 
 	constructor(
 		app: App,
@@ -278,47 +279,60 @@ export class BatchRenameModal extends Modal {
 			cls: 'f2-batch-process-row',
 		});
 
-		const removeNumBtn = processRow.createEl('button', {
-			cls: 'f2-batch-chip f2-batch-process-chip',
-			text: t('modal.batch.removeNumbering'),
-			attr: {
-				type: 'button',
-				title: t('modal.batch.removeNumberingHint'),
-				'aria-pressed': this.removeNumbering ? 'true' : 'false',
+		const processMeta: Record<
+			BatchTextProcessId,
+			{ label: string; hint: string }
+		> = {
+			removeNumbering: {
+				label: t('modal.batch.removeNumbering'),
+				hint: t('modal.batch.removeNumberingHint'),
 			},
-		});
-		this.removeNumberingBtn = removeNumBtn;
-		if (this.removeNumbering) removeNumBtn.addClass('is-active');
-		removeNumBtn.addEventListener('click', () => {
-			this.removeNumbering = !this.removeNumbering;
-			removeNumBtn.toggleClass('is-active', this.removeNumbering);
-			removeNumBtn.setAttr(
-				'aria-pressed',
-				this.removeNumbering ? 'true' : 'false',
-			);
-			this.onRuleChanged();
-		});
+			removeBrackets: {
+				label: t('modal.batch.removeBrackets'),
+				hint: t('modal.batch.removeBracketsHint'),
+			},
+			removeSpecial: {
+				label: t('modal.batch.removeSpecial'),
+				hint: t('modal.batch.removeSpecialHint'),
+			},
+			fullwidthToHalf: {
+				label: t('modal.batch.fullwidthToHalf'),
+				hint: t('modal.batch.fullwidthToHalfHint'),
+			},
+			collapseSpaces: {
+				label: t('modal.batch.collapseSpaces'),
+				hint: t('modal.batch.collapseSpacesHint'),
+			},
+			spacesToUnderscore: {
+				label: t('modal.batch.spacesToUnderscore'),
+				hint: t('modal.batch.spacesToUnderscoreHint'),
+			},
+			underscoresToSpaces: {
+				label: t('modal.batch.underscoresToSpaces'),
+				hint: t('modal.batch.underscoresToSpacesHint'),
+			},
+			spaceCjkLatin: {
+				label: t('modal.batch.spaceCjkLatin'),
+				hint: t('modal.batch.spaceCjkLatinHint'),
+			},
+		};
 
-		const spaceBtn = processRow.createEl('button', {
-			cls: 'f2-batch-chip f2-batch-process-chip',
-			text: t('modal.batch.spaceCjkLatin'),
-			attr: {
-				type: 'button',
-				title: t('modal.batch.spaceCjkLatinHint'),
-				'aria-pressed': this.spaceCjkLatin ? 'true' : 'false',
-			},
-		});
-		this.spaceCjkLatinBtn = spaceBtn;
-		if (this.spaceCjkLatin) spaceBtn.addClass('is-active');
-		spaceBtn.addEventListener('click', () => {
-			this.spaceCjkLatin = !this.spaceCjkLatin;
-			spaceBtn.toggleClass('is-active', this.spaceCjkLatin);
-			spaceBtn.setAttr(
-				'aria-pressed',
-				this.spaceCjkLatin ? 'true' : 'false',
-			);
-			this.onRuleChanged();
-		});
+		for (const id of BATCH_TEXT_PROCESS_IDS) {
+			const meta = processMeta[id];
+			const on = Boolean(this.textProcess[id]);
+			const btn = processRow.createEl('button', {
+				cls: 'f2-batch-chip f2-batch-process-chip',
+				text: meta.label,
+				attr: {
+					type: 'button',
+					title: meta.hint,
+					'aria-pressed': on ? 'true' : 'false',
+				},
+			});
+			if (on) btn.addClass('is-active');
+			btn.addEventListener('click', () => this.toggleTextProcess(id));
+			this.processButtons.set(id, btn);
+		}
 
 		const actions = root.createDiv({ cls: 'f2-batch-controls-actions' });
 		this.processBtn = actions.createEl('button', {
@@ -515,6 +529,28 @@ export class BatchRenameModal extends Modal {
 		this.onRuleChanged();
 	}
 
+	private toggleTextProcess(id: BatchTextProcessId): void {
+		const next = !this.textProcess[id];
+		this.textProcess[id] = next;
+		// Spaces ↔ underscores are mutually exclusive.
+		if (next && id === 'spacesToUnderscore') {
+			this.textProcess.underscoresToSpaces = false;
+		}
+		if (next && id === 'underscoresToSpaces') {
+			this.textProcess.spacesToUnderscore = false;
+		}
+		this.syncProcessButtons();
+		this.onRuleChanged();
+	}
+
+	private syncProcessButtons(): void {
+		for (const [id, btn] of this.processButtons) {
+			const on = Boolean(this.textProcess[id]);
+			btn.toggleClass('is-active', on);
+			btn.setAttr('aria-pressed', on ? 'true' : 'false');
+		}
+	}
+
 	private insertToken(
 		input: HTMLInputElement,
 		token: string,
@@ -538,10 +574,7 @@ export class BatchRenameModal extends Modal {
 			replace: this.replace,
 			useRegex: this.useRegex,
 			textCase: this.textCase,
-			textProcess: {
-				removeNumbering: this.removeNumbering,
-				spaceCjkLatin: this.spaceCjkLatin,
-			},
+			textProcess: { ...this.textProcess },
 		};
 	}
 
@@ -601,8 +634,7 @@ export class BatchRenameModal extends Modal {
 		this.replace = '';
 		this.useRegex = false;
 		this.textCase = 'none';
-		this.removeNumbering = false;
-		this.spaceCjkLatin = false;
+		this.textProcess = {};
 
 		for (const [id, btn] of this.modeButtons) {
 			btn.toggleClass('is-active', id === 'format');
@@ -633,10 +665,7 @@ export class BatchRenameModal extends Modal {
 			btn.setAttr('aria-pressed', id === 'none' ? 'true' : 'false');
 		}
 
-		this.removeNumberingBtn?.toggleClass('is-active', false);
-		this.removeNumberingBtn?.setAttr('aria-pressed', 'false');
-		this.spaceCjkLatinBtn?.toggleClass('is-active', false);
-		this.spaceCjkLatinBtn?.setAttr('aria-pressed', 'false');
+		this.syncProcessButtons();
 	}
 
 	private undoLastStep(): void {

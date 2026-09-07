@@ -116,6 +116,24 @@ export const en = {
 	'modal.batch.removeNumbering': 'Remove numbers',
 	'modal.batch.removeNumberingHint':
 		'Strip digit runs and numbered brackets from the basename',
+	'modal.batch.removeBrackets': 'Remove brackets',
+	'modal.batch.removeBracketsHint':
+		'Remove bracket pairs and the text inside them',
+	'modal.batch.removeSpecial': 'Remove symbols',
+	'modal.batch.removeSpecialHint':
+		'Keep letters, digits, CJK, spaces, _ and -; drop other symbols',
+	'modal.batch.fullwidthToHalf': 'Fullwidth → halfwidth',
+	'modal.batch.fullwidthToHalfHint':
+		'Convert fullwidth ASCII characters and ideographic spaces to halfwidth',
+	'modal.batch.collapseSpaces': 'Collapse spaces',
+	'modal.batch.collapseSpacesHint':
+		'Replace consecutive whitespace with a single space and trim',
+	'modal.batch.spacesToUnderscore': 'Spaces → _',
+	'modal.batch.spacesToUnderscoreHint':
+		'Replace spaces with underscores',
+	'modal.batch.underscoresToSpaces': '_ → spaces',
+	'modal.batch.underscoresToSpacesHint':
+		'Replace underscores with spaces',
 	'modal.batch.spaceCjkLatin': 'Space CJK / Latin',
 	'modal.batch.spaceCjkLatinHint':
 		'Insert a space between Chinese characters and Latin letters or digits',
