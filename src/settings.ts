@@ -155,8 +155,9 @@ export interface F2RenameSettings {
 	 */
 	editExtension: boolean;
 	/**
-	 * When a multi-line editor selection contains multiple embeds/links,
-	 * F2 opens a batch rename panel. Defaults to false.
+	 * Enable batch rename from multi-line embed/link selection (F2), folder
+	 * context menu, multi-file selection, and Search results menu.
+	 * Defaults to false.
 	 */
 	batchRename: boolean;
 	/**

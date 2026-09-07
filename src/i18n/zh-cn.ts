@@ -13,6 +13,7 @@ export const zhCN: Record<TranslationKey, string> = {
 	'commands.renameAttachments': '重命名附件',
 	'commands.copyAndDelete': '复制并删除文件',
 	'menu.f2Rename': 'F2 快速重命名',
+	'menu.batchRenameCount': '批量重命名 ({count})',
 
 	'settings.tab.general': '基础设置',
 	'settings.tab.features': '功能开关',
@@ -232,7 +233,7 @@ export const zhCN: Record<TranslationKey, string> = {
 		'开启后，可在重命名面板中双击文件名后的扩展名进行编辑（例如 .md）。默认关闭。',
 	'settings.features.batchRename.name': '批量 F2 重命名',
 	'settings.features.batchRename.desc':
-		'在笔记中选中包含多个嵌入或链接的多行内容时，按 F2 打开批量重命名面板（格式模板或查找替换）。默认关闭。',
+		'开启后可从以下入口批量重命名：笔记中多行嵌入/链接选区（F2）、文件夹右键、文件多选右键、搜索结果菜单。默认关闭。',
 	'settings.features.batchRenameTempLayer.name': '批量重命名使用临时中间名',
 	'settings.features.batchRenameTempLayer.desc':
 		'开启后先改成时间戳临时名，再改成最终名，便于处理互换/链式冲突。默认关闭：直接改到目标名。',

@@ -1,4 +1,4 @@
-import { App, TAbstractFile, TFile } from 'obsidian';
+import { App, TAbstractFile, TFile, TFolder } from 'obsidian';
 
 /**
  * Collect vault files currently multi-selected in a File Explorer leaf.
@@ -101,6 +101,57 @@ export function filterRenameableFiles(files: TAbstractFile[]): TFile[] {
 	const out: TFile[] = [];
 	const seen = new Set<string>();
 	for (const file of files) {
+		if (!(file instanceof TFile) || seen.has(file.path)) continue;
+		seen.add(file.path);
+		out.push(file);
+	}
+	return out;
+}
+
+/**
+ * Expand files and folders into a deduped flat list of vault files.
+ * Folders are walked recursively.
+ */
+export function collectFilesFromAbstracts(items: TAbstractFile[]): TFile[] {
+	const out: TFile[] = [];
+	const seen = new Set<string>();
+
+	const add = (file: TFile) => {
+		if (seen.has(file.path)) return;
+		seen.add(file.path);
+		out.push(file);
+	};
+
+	const walkFolder = (folder: TFolder) => {
+		for (const child of folder.children) {
+			if (child instanceof TFile) add(child);
+			else if (child instanceof TFolder) walkFolder(child);
+		}
+	};
+
+	for (const item of items) {
+		if (item instanceof TFile) add(item);
+		else if (item instanceof TFolder) walkFolder(item);
+	}
+	return out;
+}
+
+/**
+ * Collect files from a global Search leaf (search:results-menu).
+ * Uses internal Search DOM structure (same approach as Quick Tagger).
+ */
+export function collectSearchResultFiles(leaf: unknown): TFile[] {
+	const out: TFile[] = [];
+	const seen = new Set<string>();
+	const children = (
+		leaf as {
+			dom?: { vChildren?: { children?: Array<{ file?: TAbstractFile }> } };
+		}
+	)?.dom?.vChildren?.children;
+	if (!children) return out;
+
+	for (const entry of children) {
+		const file = entry?.file;
 		if (!(file instanceof TFile) || seen.has(file.path)) continue;
 		seen.add(file.path);
 		out.push(file);

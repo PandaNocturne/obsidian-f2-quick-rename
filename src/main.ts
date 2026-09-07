@@ -1,4 +1,4 @@
-import { Plugin, TFile } from 'obsidian';
+import { EventRef, Menu, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
 import { setLocalePreference, t } from './i18n';
 import { AttachmentRenameService } from './attachment-rename-service';
 import { RenameService } from './rename-service';
@@ -21,7 +21,18 @@ import {
 	DEFAULT_MODAL_WIDTH,
 	normalizeCssLengthList,
 } from './utils/css-size';
+import {
+	collectFilesFromAbstracts,
+	collectSearchResultFiles,
+} from './utils/file-explorer-selection';
 import { F2RenameSettingTab } from './ui/settings-tab';
+
+type WorkspaceWithSearchMenu = {
+	on(
+		name: 'search:results-menu',
+		callback: (menu: Menu, leaf: unknown) => void,
+	): EventRef;
+};
 
 export default class F2RenamePlugin extends Plugin {
 	settings!: F2RenameSettings;
@@ -142,19 +153,66 @@ export default class F2RenamePlugin extends Plugin {
 
 		this.registerEvent(
 			this.app.workspace.on('file-menu', (menu, file) => {
-				if (!(file instanceof TFile)) return;
-				menu.addItem((item) => {
-					item
-						.setTitle(t('menu.f2Rename'))
-						.setIcon('pencil')
-						.onClick(() => {
-							void this.renameService.runForFile(file);
-						});
-				});
+				if (file instanceof TFile) {
+					menu.addItem((item) => {
+						item
+							.setTitle(t('menu.f2Rename'))
+							.setIcon('pencil')
+							.onClick(() => {
+								void this.renameService.runForFile(file);
+							});
+					});
+				}
+
+				if (
+					this.settings.batchRename &&
+					file instanceof TFolder
+				) {
+					this.addBatchRenameMenuItem(menu, [file]);
+				}
 			}),
 		);
 
+		this.registerEvent(
+			this.app.workspace.on('files-menu', (menu, files) => {
+				if (!this.settings.batchRename) return;
+				this.addBatchRenameMenuItem(menu, files);
+			}),
+		);
+
+		// Undocumented; same hook used by Quick Tagger for Search results.
+		this.registerEvent(
+			(this.app.workspace as unknown as WorkspaceWithSearchMenu).on(
+				'search:results-menu',
+				(menu, leaf) => {
+					if (!this.settings.batchRename) return;
+					const files = collectSearchResultFiles(leaf);
+					this.addBatchRenameMenuItem(menu, files);
+				},
+			),
+		);
+
 		this.addSettingTab(new F2RenameSettingTab(this.app, this));
+	}
+
+	/** Context-menu entry that opens batch rename for the given abstracts. */
+	private addBatchRenameMenuItem(
+		menu: Menu,
+		items: TAbstractFile[],
+	): void {
+		const targets = collectFilesFromAbstracts(items);
+		if (targets.length < 2) return;
+
+		menu.addItem((item) => {
+			item
+				.setTitle(
+					t('menu.batchRenameCount', { count: targets.length }),
+				)
+				.setIcon('lucide-list-tree')
+				.onClick(() => {
+					void this.renameService.runBatchRename(targets);
+				});
+		});
 	}
 
 	async saveSettings(): Promise<void> {

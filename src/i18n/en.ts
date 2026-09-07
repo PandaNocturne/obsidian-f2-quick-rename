@@ -11,6 +11,7 @@ export const en = {
 	'commands.renameAttachments': 'Rename attachments',
 	'commands.copyAndDelete': 'Copy and delete file',
 	'menu.f2Rename': 'F2 Quick rename',
+	'menu.batchRenameCount': 'Batch rename ({count})',
 
 	'settings.tab.general': 'General',
 	'settings.tab.features': 'Features',
@@ -248,7 +249,7 @@ export const en = {
 		'When enabled, double-click the extension after the filename in the rename panel to edit it (for example .md). Off by default.',
 	'settings.features.batchRename.name': 'Batch F2 rename',
 	'settings.features.batchRename.desc':
-		'When a multi-line selection contains multiple embeds or links, F2 opens a batch rename panel (format template or find/replace). Off by default.',
+		'Enable batch rename from: multi-line embed/link selection (F2), folder right-click, multi-file selection, and Search results menu. Off by default.',
 	'settings.features.batchRenameTempLayer.name':
 		'Temporary names during batch rename',
 	'settings.features.batchRenameTempLayer.desc':
