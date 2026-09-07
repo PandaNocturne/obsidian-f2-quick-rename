@@ -102,7 +102,6 @@ export const zhCN: Record<TranslationKey, string> = {
 	'modal.batch.rename': '重命名',
 	'modal.batch.process': '处理',
 	'modal.batch.nextStep': '下一步',
-	'modal.batch.autoPreview': '自动预览',
 	'modal.batch.confirm': '确认',
 	'modal.batch.undoStep': '撤销上一步',
 	'modal.batch.removeItem': '从列表移除',

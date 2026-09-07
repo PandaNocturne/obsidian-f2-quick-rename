@@ -28,9 +28,9 @@ export interface BatchRenameResultItem {
 
 /**
  * Batch rename panel:
- * - Left: original → working new names
+ * - Left: step baseline → draft / committed new names
  * - Right: format / replace rules
- * - 处理 applies the current rule to the preview only (stackable)
+ * - 下一步 commits draft as the next baseline and resets rule options
  * - 确认 executes vault renames from the working preview
  */
 export class BatchRenameModal extends Modal {
@@ -50,15 +50,13 @@ export class BatchRenameModal extends Modal {
 	private useRegex = false;
 	private removeNumbering = false;
 	private spaceCjkLatin = false;
-	/** When true, rule edits update the preview live. Off by default. */
-	private autoPreview = false;
 	/** Header sort: 0 = list order, 1 = A→Z, -1 = Z→A. */
 	private nameSort: 0 | 1 | -1 = 0;
 	private dragFromIndex: number | null = null;
 
-	/** Current preview names (updated only by 处理 / 撤销). */
+	/** Committed baseline names for the current step (shown as 原名称). */
 	private workingNames = new Map<string, string>();
-	/** Snapshots before each 处理, for undo. */
+	/** Snapshots before each 下一步, for undo. */
 	private history: Array<Map<string, string>> = [];
 
 	private batchTitleEl!: HTMLElement;
@@ -77,6 +75,8 @@ export class BatchRenameModal extends Modal {
 	private clearBtn!: HTMLButtonElement;
 	private modeButtons = new Map<BatchRenameMode, HTMLButtonElement>();
 	private caseButtons = new Map<BatchTextCase, HTMLButtonElement>();
+	private removeNumberingBtn!: HTMLButtonElement;
+	private spaceCjkLatinBtn!: HTMLButtonElement;
 
 	constructor(
 		app: App,
@@ -286,6 +286,7 @@ export class BatchRenameModal extends Modal {
 				'aria-pressed': this.removeNumbering ? 'true' : 'false',
 			},
 		});
+		this.removeNumberingBtn = removeNumBtn;
 		if (this.removeNumbering) removeNumBtn.addClass('is-active');
 		removeNumBtn.addEventListener('click', () => {
 			this.removeNumbering = !this.removeNumbering;
@@ -306,6 +307,7 @@ export class BatchRenameModal extends Modal {
 				'aria-pressed': this.spaceCjkLatin ? 'true' : 'false',
 			},
 		});
+		this.spaceCjkLatinBtn = spaceBtn;
 		if (this.spaceCjkLatin) spaceBtn.addClass('is-active');
 		spaceBtn.addEventListener('click', () => {
 			this.spaceCjkLatin = !this.spaceCjkLatin;
@@ -318,20 +320,6 @@ export class BatchRenameModal extends Modal {
 		});
 
 		const actions = root.createDiv({ cls: 'f2-batch-controls-actions' });
-		const autoRow = actions.createDiv({ cls: 'f2-batch-check-row' });
-		const autoLabel = autoRow.createEl('label', {
-			cls: 'f2-batch-check-label',
-		});
-		const autoToggle = autoLabel.createEl('input', {
-			attr: { type: 'checkbox' },
-		});
-		autoToggle.checked = this.autoPreview;
-		autoToggle.addEventListener('change', () => {
-			this.autoPreview = autoToggle.checked;
-			this.refreshPreview();
-		});
-		autoLabel.createSpan({ text: t('modal.batch.autoPreview') });
-
 		this.processBtn = actions.createEl('button', {
 			text: t('modal.batch.nextStep'),
 			cls: 'f2-rename-btn f2-rename-btn-primary mod-cta f2-batch-process',
@@ -565,13 +553,12 @@ export class BatchRenameModal extends Modal {
 		this.syncActionState();
 	}
 
-	/** Refresh list only when auto-preview is on (rule edits). */
+	/** Rule edits always update the live preview. */
 	private onRuleChanged(): void {
-		if (this.autoPreview) this.refreshPreview();
-		else this.syncActionState();
+		this.refreshPreview();
 	}
 
-	/** Commit the live draft as the next baseline step. */
+	/** Commit the live draft as the next baseline step, then reset rule options. */
 	private applyNextStep(): void {
 		const draft = this.computeDraftNames();
 		if (draft.error === 'invalid-regex') {
@@ -592,7 +579,54 @@ export class BatchRenameModal extends Modal {
 
 		this.history.push(new Map(this.workingNames));
 		this.workingNames = draft.names;
+		this.resetRuleOptions();
 		this.refreshPreview();
+	}
+
+	/** Restore naming / text options to defaults for the next step. */
+	private resetRuleOptions(): void {
+		this.mode = 'format';
+		this.template = DEFAULT_BATCH_NAME_TEMPLATE;
+		this.find = '';
+		this.replace = '';
+		this.useRegex = false;
+		this.textCase = 'none';
+		this.removeNumbering = false;
+		this.spaceCjkLatin = false;
+
+		for (const [id, btn] of this.modeButtons) {
+			btn.toggleClass('is-active', id === 'format');
+			btn.setAttr('aria-selected', id === 'format' ? 'true' : 'false');
+		}
+		this.formatPanel.toggleClass('is-active', true);
+		this.replacePanel.toggleClass('is-active', false);
+
+		if (this.templateInput) {
+			this.templateInput.value = this.template;
+		}
+		if (this.findInput) this.findInput.value = '';
+		if (this.replaceInput) this.replaceInput.value = '';
+		if (this.regexToggle) {
+			this.regexToggle.checked = false;
+			this.findInput?.setAttr(
+				'placeholder',
+				t('modal.batch.findPlaceholder'),
+			);
+			this.replaceInput?.setAttr(
+				'placeholder',
+				t('modal.batch.replacePlaceholder'),
+			);
+		}
+
+		for (const [id, btn] of this.caseButtons) {
+			btn.toggleClass('is-active', id === 'none');
+			btn.setAttr('aria-pressed', id === 'none' ? 'true' : 'false');
+		}
+
+		this.removeNumberingBtn?.toggleClass('is-active', false);
+		this.removeNumberingBtn?.setAttr('aria-pressed', 'false');
+		this.spaceCjkLatinBtn?.toggleClass('is-active', false);
+		this.spaceCjkLatinBtn?.setAttr('aria-pressed', 'false');
 	}
 
 	private undoLastStep(): void {
@@ -603,16 +637,9 @@ export class BatchRenameModal extends Modal {
 	}
 
 	private computePreviews(): BatchRenamePreview[] {
-		if (this.autoPreview) {
-			const draft = this.computeDraftNames();
-			const names = draft.error ? this.workingNames : draft.names;
-			return previewFromWorkingNames(this.app, this.files, names);
-		}
-		return previewFromWorkingNames(
-			this.app,
-			this.files,
-			this.workingNames,
-		);
+		const draft = this.computeDraftNames();
+		const names = draft.error ? this.workingNames : draft.names;
+		return previewFromWorkingNames(this.app, this.files, names);
 	}
 
 	private updateTitle(): void {
@@ -710,16 +737,20 @@ export class BatchRenameModal extends Modal {
 			return;
 		}
 
-		let changedCount = 0;
+		let vaultChangeCount = 0;
 		previews.forEach((row, index) => {
-			if (row.changed && !row.error) changedCount += 1;
+			if (row.changed && !row.error) vaultChangeCount += 1;
+
+			const baseline =
+				this.workingNames.get(row.file.path) ?? row.file.name;
+			const stepChanged = !row.error && row.newName !== baseline;
 
 			const el = this.previewBody.createDiv({
 				cls: 'f2-batch-preview-row',
 				attr: { draggable: 'true', 'data-index': String(index) },
 			});
 			if (row.error) el.addClass('is-error');
-			else if (row.changed) el.addClass('is-changed');
+			else if (stepChanged) el.addClass('is-changed');
 
 			el.addEventListener('dragstart', (evt) => {
 				this.dragFromIndex = index;
@@ -757,7 +788,7 @@ export class BatchRenameModal extends Modal {
 
 			el.createDiv({
 				cls: 'f2-batch-col-old',
-				text: row.file.name,
+				text: baseline,
 				attr: { title: row.file.path },
 			});
 
@@ -797,7 +828,7 @@ export class BatchRenameModal extends Modal {
 			});
 		});
 
-		this.countEl.setText(`(${changedCount}/${this.files.length})`);
+		this.countEl.setText(`(${vaultChangeCount}/${this.files.length})`);
 	}
 
 	private syncActionState(): void {

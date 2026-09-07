@@ -108,7 +108,6 @@ export const en = {
 	'modal.batch.rename': 'Rename',
 	'modal.batch.process': 'Process',
 	'modal.batch.nextStep': 'Next',
-	'modal.batch.autoPreview': 'Auto preview',
 	'modal.batch.confirm': 'Confirm',
 	'modal.batch.undoStep': 'Undo step',
 	'modal.batch.removeItem': 'Remove from list',
