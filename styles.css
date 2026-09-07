@@ -1137,15 +1137,18 @@
 
 .f2-batch-controls-actions {
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
+	align-items: stretch;
 	gap: 0.65rem;
 	margin-top: auto;
 	padding-top: 0.75rem;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
+.f2-batch-controls-actions .f2-batch-prev,
 .f2-batch-controls-actions .f2-batch-process {
-	width: 100%;
+	flex: 1 1 0;
+	width: auto;
 	justify-content: center;
 }
 
@@ -1379,7 +1382,9 @@
 .f2-batch-confirm.is-disabled,
 .f2-batch-confirm:disabled,
 .f2-batch-list-bar .is-disabled,
-.f2-batch-list-bar button:disabled {
+.f2-batch-list-bar button:disabled,
+.f2-batch-controls-actions .is-disabled,
+.f2-batch-controls-actions button:disabled {
 	opacity: 0.55;
 	cursor: not-allowed;
 }

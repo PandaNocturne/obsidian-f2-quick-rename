@@ -183,15 +183,6 @@ export class BatchRenameModal extends Modal {
 		setIcon(clearIcon, 'trash-2');
 		this.clearBtn.createSpan({ text: t('modal.batch.clearList') });
 		this.clearBtn.addEventListener('click', () => this.clearList());
-
-		const listRight = listBar.createDiv({ cls: 'f2-batch-list-bar-right' });
-		this.undoBtn = listRight.createEl('button', {
-			cls: 'f2-rename-btn',
-			text: t('modal.batch.undoStep'),
-			attr: { type: 'button' },
-		});
-		this.undoBtn.disabled = true;
-		this.undoBtn.addEventListener('click', () => this.undoLastStep());
 	}
 
 	private renderControls(root: HTMLElement): void {
@@ -335,6 +326,14 @@ export class BatchRenameModal extends Modal {
 		}
 
 		const actions = root.createDiv({ cls: 'f2-batch-controls-actions' });
+		this.undoBtn = actions.createEl('button', {
+			text: t('modal.batch.undoStep'),
+			cls: 'f2-rename-btn f2-batch-prev',
+			attr: { type: 'button' },
+		});
+		this.undoBtn.disabled = true;
+		this.undoBtn.addEventListener('click', () => this.undoLastStep());
+
 		this.processBtn = actions.createEl('button', {
 			text: t('modal.batch.nextStep'),
 			cls: 'f2-rename-btn f2-rename-btn-primary mod-cta f2-batch-process',

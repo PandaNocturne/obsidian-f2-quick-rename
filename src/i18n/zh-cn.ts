@@ -130,7 +130,7 @@ export const zhCN: Record<TranslationKey, string> = {
 	'modal.batch.process': '处理',
 	'modal.batch.nextStep': '下一步',
 	'modal.batch.confirm': '确认',
-	'modal.batch.undoStep': '撤销上一步',
+	'modal.batch.undoStep': '上一步',
 	'modal.batch.removeItem': '从列表移除',
 	'modal.batch.clearList': '清除列表',
 	'modal.batch.dragToReorder': '拖动排序',

@@ -143,7 +143,7 @@ export const en = {
 	'modal.batch.process': 'Process',
 	'modal.batch.nextStep': 'Next',
 	'modal.batch.confirm': 'Confirm',
-	'modal.batch.undoStep': 'Undo step',
+	'modal.batch.undoStep': 'Previous',
 	'modal.batch.removeItem': 'Remove from list',
 	'modal.batch.clearList': 'Clear list',
 	'modal.batch.dragToReorder': 'Drag to reorder',
