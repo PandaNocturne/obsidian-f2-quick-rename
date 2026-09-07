@@ -11,6 +11,7 @@ export const en = {
 	'commands.renameAttachments': 'Rename attachments',
 	'commands.copyAndDelete': 'Copy and delete file',
 	'menu.f2Rename': 'F2 Quick rename',
+	'menu.batchRenameCount': 'Batch rename ({count})',
 
 	'settings.tab.general': 'General',
 	'settings.tab.features': 'Features',
@@ -18,6 +19,14 @@ export const en = {
 	'settings.tab.attachments': 'Attachments',
 
 	'notice.noOpenFile': 'No file is open',
+	'notice.noBatchFiles':
+		'Select multiple lines that contain at least two embeds or links',
+	'notice.batchRenameProgress':
+		'Batch rename ({current}/{total})\nRenamed: {renamed} | Failed: {failed}\n{status}',
+	'notice.batchRenameDone':
+		'Batch rename done ({total}/{total})\nRenamed: {renamed} | Failed: {failed}',
+	'notice.batchRenameItemFailed': 'Failed to rename: {name}',
+	'notice.batchInvalidRegex': 'Invalid regular expression',
 	'notice.noEmbedToDelete':
 		'No embedded file under the cursor. This command only deletes embeds, not the current note.',
 	'notice.fullPropertiesMarkdownOnly':
@@ -64,6 +73,89 @@ export const en = {
 	'modal.attachments.currentName': 'Current',
 	'modal.attachments.newName': 'New name',
 	'modal.attachments.resetSuggestions': 'Reset suggestions',
+
+	'modal.batch.title': 'Batch rename ({count})',
+	'modal.batch.namingMethod': 'Naming method',
+	'modal.batch.modeFormat': 'Format',
+	'modal.batch.modeReplace': 'Replace',
+	'modal.batch.nameLabel': 'Name',
+	'modal.batch.placeholder.name': 'Original name',
+	'modal.batch.placeholder.ext': 'Extension',
+	'modal.batch.placeholder.index': 'Index',
+	'modal.batch.placeholder.date': 'Date',
+	'modal.batch.placeholder.folder': 'Folder',
+	'modal.batch.help': 'Help',
+	'modal.batch.helpTitle': 'Format placeholders',
+	'modal.batch.help.syntax': 'Syntax',
+	'modal.batch.help.meaning': 'Meaning',
+	'modal.batch.help.token.name': 'Basename for the current step',
+	'modal.batch.help.token.ext': 'Extension with a leading dot (e.g. .md)',
+	'modal.batch.help.token.index': 'List index (starts at 1)',
+	'modal.batch.help.token.indexPad':
+		'Zero-padded index to 3 digits → 001',
+	'modal.batch.help.token.date': 'Today, default YYYYMMDD',
+	'modal.batch.help.token.dateFmt':
+		'Custom date (moment format)',
+	'modal.batch.help.token.ctime': 'Created time',
+	'modal.batch.help.token.mtime': 'Modified time',
+	'modal.batch.help.token.folder':
+		'Name of the parent folder',
+	'modal.batch.findLabel': 'Find',
+	'modal.batch.replaceLabel': 'Replace with',
+	'modal.batch.findPlaceholder': 'Text to find in the filename',
+	'modal.batch.replacePlaceholder': 'Replacement text',
+	'modal.batch.findRegexPlaceholder': 'Regular expression, e.g. ^(\\d+)-',
+	'modal.batch.replaceRegexPlaceholder': 'Replacement, e.g. $1_',
+	'modal.batch.useRegex': 'Use regular expression',
+	'modal.batch.textCase': 'Text case',
+	'modal.batch.case.none': 'No change',
+	'modal.batch.case.upper': 'UPPERCASE',
+	'modal.batch.case.lower': 'lowercase',
+	'modal.batch.case.title': 'Title Case',
+	'modal.batch.textProcess': 'Text process',
+	'modal.batch.removeNumbering': 'Remove numbers',
+	'modal.batch.removeNumberingHint':
+		'Strip digit runs and numbered brackets from the basename',
+	'modal.batch.removeBrackets': 'Remove brackets',
+	'modal.batch.removeBracketsHint':
+		'Remove bracket pairs and the text inside them',
+	'modal.batch.removeSpecial': 'Remove symbols',
+	'modal.batch.removeSpecialHint':
+		'Keep letters, digits, CJK, spaces, _ and -; drop other symbols',
+	'modal.batch.fullwidthToHalf': 'Fullwidth → halfwidth',
+	'modal.batch.fullwidthToHalfHint':
+		'Convert fullwidth ASCII characters and ideographic spaces to halfwidth',
+	'modal.batch.collapseSpaces': 'Collapse spaces',
+	'modal.batch.collapseSpacesHint':
+		'Replace consecutive whitespace with a single space and trim',
+	'modal.batch.spacesToUnderscore': 'Spaces → _',
+	'modal.batch.spacesToUnderscoreHint':
+		'Replace spaces with underscores',
+	'modal.batch.underscoresToSpaces': '_ → spaces',
+	'modal.batch.underscoresToSpacesHint':
+		'Replace underscores with spaces',
+	'modal.batch.spaceCjkLatin': 'Space CJK / Latin',
+	'modal.batch.spaceCjkLatinHint':
+		'Insert a space between Chinese characters and Latin letters or digits',
+	'modal.batch.originalName': 'Original name',
+	'modal.batch.newName': 'New name',
+	'modal.batch.selectAll': 'Select all for this step',
+	'modal.batch.selectItem': 'Include in this step',
+	'modal.batch.rename': 'Rename',
+	'modal.batch.process': 'Process',
+	'modal.batch.nextStep': 'Next',
+	'modal.batch.confirm': 'Confirm',
+	'modal.batch.undoStep': 'Previous',
+	'modal.batch.removeItem': 'Remove from list',
+	'modal.batch.clearList': 'Clear list',
+	'modal.batch.dragToReorder': 'Drag to reorder',
+	'modal.batch.sortByName': 'Sort by original name',
+	'modal.batch.sortAsc': 'Sorted A → Z',
+	'modal.batch.sortDesc': 'Sorted Z → A',
+	'modal.batch.emptyList': 'No files in the list',
+	'modal.batch.errorEmpty': '(empty name)',
+	'modal.batch.errorInvalid': '(invalid characters)',
+	'modal.batch.errorCollision': 'Conflict: {name}',
 
 	'tooltip.doubleClickToEdit': 'Double-click to edit',
 	'tooltip.clickIconOpenDoubleClickEdit':
@@ -114,12 +206,18 @@ export const en = {
 	'settings.basic.locale.system': 'System default',
 	'settings.basic.locale.zhCN': '简体中文',
 	'settings.basic.locale.en': 'English',
-	'settings.basic.modalWidth.name': 'Panel width',
+	'settings.basic.modalWidth.name': 'Rename panel width',
 	'settings.basic.modalWidth.desc':
-		'CSS lengths such as 40vw or 600px. Separate multiple with commas; the smallest wins (CSS min()). Example: 40vw, 720px',
-	'settings.basic.modalMaxHeight.name': 'Panel max height',
+		'Width of the single-file rename panel. CSS lengths such as 40vw or 600px. Separate multiple with commas; the smallest wins (CSS min()). Example: 40vw, 720px',
+	'settings.basic.modalMaxHeight.name': 'Rename panel max height',
 	'settings.basic.modalMaxHeight.desc':
-		'CSS lengths such as 90vh or 920px. Separate multiple with commas; the smallest wins. Example: 90vh, 920px',
+		'Max height of the single-file rename panel. CSS lengths such as 80vh or 650px. Separate multiple with commas; the smallest wins. Example: 80vh, 650px',
+	'settings.basic.batchModalWidth.name': 'Batch panel width',
+	'settings.basic.batchModalWidth.desc':
+		'Width of the batch rename panel. CSS lengths such as 92vw or 1100px. Separate multiple with commas; the smallest wins. Example: 92vw, 1100px',
+	'settings.basic.batchModalMaxHeight.name': 'Batch panel height',
+	'settings.basic.batchModalMaxHeight.desc':
+		'Height of the batch rename panel (fixed). CSS lengths such as 80vh or 650px. Separate multiple with commas; the smallest wins. Example: 80vh, 650px',
 	'settings.basic.resetSize': 'Reset to default',
 
 	'settings.features.heading': 'Feature toggles',
@@ -149,6 +247,13 @@ export const en = {
 	'settings.features.editExtension.name': 'Double-click to edit extension',
 	'settings.features.editExtension.desc':
 		'When enabled, double-click the extension after the filename in the rename panel to edit it (for example .md). Off by default.',
+	'settings.features.batchRename.name': 'Batch F2 rename',
+	'settings.features.batchRename.desc':
+		'Enable batch rename from: multi-line embed/link selection (F2), folder right-click, multi-file selection, and Search results menu. Off by default.',
+	'settings.features.batchRenameTempLayer.name':
+		'Temporary names during batch rename',
+	'settings.features.batchRenameTempLayer.desc':
+		'When on, each file is first renamed to a timestamp temp name, then to the final name (helps with swaps / chains). Off by default: rename directly to the target name.',
 	'settings.features.showHeaderDelete.name': 'Delete button in rename panel',
 	'settings.features.showHeaderDelete.desc':
 		'Show a delete button in the rename panel header. After confirmation, copyable files are copied to the clipboard (Markdown without YAML) and the file is moved to trash.',

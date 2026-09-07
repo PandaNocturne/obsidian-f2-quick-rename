@@ -3,14 +3,17 @@ import {
 	Editor,
 	MarkdownView,
 	Notice,
+	TAbstractFile,
 	TFile,
 	normalizePath,
 } from 'obsidian';
 import { t } from './i18n';
 import type F2RenamePlugin from './main';
+import { promptBatchRename } from './ui/batch-rename-modal';
 import { promptRename } from './ui/rename-prompt-modal';
 import {
 	type EmbedMatch,
+	collectEmbedFilesFromText,
 	companionStem,
 	companionStemFromLeaf,
 	displayExtensionSuffix,
@@ -37,6 +40,14 @@ import {
 	copyAndTrashFile,
 	parseCopyOnDeleteTypes,
 } from './utils/file-delete';
+import { planBatchRenameSteps } from './utils/batch-rename';
+import {
+	getFileExplorerSelectedFiles,
+	isFileExplorerFocused,
+} from './utils/file-explorer-selection';
+
+const sleep = (ms: number) =>
+	new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 export class RenameService {
 	constructor(private readonly plugin: F2RenamePlugin) {}
@@ -47,6 +58,17 @@ export class RenameService {
 
 	async run(): Promise<void> {
 		const { settings } = this.plugin;
+
+		// File explorer: rename the single selected file when focused there.
+		if (isFileExplorerFocused(this.app)) {
+			const selected = getFileExplorerSelectedFiles(this.app);
+			if (selected.length === 1) {
+				const only = selected[0];
+				if (only) await this.renameTargetFile(only, false);
+				return;
+			}
+		}
+
 		const file = this.resolveCommandTargetFile();
 		if (!file) {
 			new Notice(t('notice.noOpenFile'));
@@ -94,6 +116,23 @@ export class RenameService {
 				sameNote &&
 				(editor || hasExplicitSelection)
 			) {
+				// Multi-line selection with 2+ embeds/links → batch rename.
+				if (
+					settings.batchRename &&
+					hasExplicitSelection &&
+					selection.includes('\n')
+				) {
+					const batchTargets = collectEmbedFilesFromText(
+						this.app,
+						selection,
+						file.path,
+					);
+					if (batchTargets.length > 1) {
+						await this.runBatchRename(batchTargets);
+						return;
+					}
+				}
+
 				const embed = matchSelectionEmbed(selection);
 				if (embed) {
 					if (isWebUrl(embed.linkpath)) {
@@ -120,6 +159,110 @@ export class RenameService {
 	/** Rename a specific vault file (e.g. from the file explorer context menu). */
 	async runForFile(file: TFile): Promise<void> {
 		await this.renameTargetFile(file, false);
+	}
+
+	/**
+	 * Batch-rename embed/link targets from a multi-line editor selection.
+	 * Only renames leaf names in place.
+	 */
+	async runBatchRename(files: TAbstractFile[]): Promise<void> {
+		if (!this.plugin.settings.batchRename) return;
+
+		const targets: TFile[] = [];
+		const seen = new Set<string>();
+		for (const file of files) {
+			if (!(file instanceof TFile) || seen.has(file.path)) continue;
+			seen.add(file.path);
+			targets.push(file);
+		}
+		if (targets.length < 2) {
+			const only = targets[0];
+			if (only) {
+				await this.renameTargetFile(only, false);
+				return;
+			}
+			new Notice(t('notice.noBatchFiles'));
+			return;
+		}
+
+		const { settings } = this.plugin;
+		const result = await promptBatchRename(this.app, targets, {
+			modalWidth: settings.batchModalWidth,
+			modalMaxHeight: settings.batchModalMaxHeight,
+		});
+		if (!result || result.length === 0) return;
+
+		const steps = planBatchRenameSteps(this.app, result, {
+			useTempLayer: settings.batchRenameTempLayer,
+		});
+		if (steps.length === 0) return;
+
+		const delayMs = settings.attachmentRenameDelayMs;
+		const total = result.length;
+		let renamed = 0;
+		let failed = 0;
+		let current = 0;
+		const failedLabels = new Set<string>();
+		const notice = new Notice('', 0);
+		const update = (status: string) => {
+			notice.setMessage(
+				t('notice.batchRenameProgress', {
+					current,
+					total,
+					renamed,
+					failed,
+					status,
+				}),
+			);
+		};
+		update('');
+
+		for (const step of steps) {
+			if (step.isFinal) {
+				current = Math.min(total, current + 1);
+			}
+			update(step.label);
+
+			const file = this.app.vault.getAbstractFileByPath(step.fromPath);
+			if (!(file instanceof TFile)) {
+				if (!failedLabels.has(step.label)) {
+					failedLabels.add(step.label);
+					failed += 1;
+					new Notice(
+						t('notice.batchRenameItemFailed', { name: step.label }),
+					);
+				}
+				continue;
+			}
+			if (file.path === step.toPath) {
+				if (step.isFinal) renamed += 1;
+				continue;
+			}
+
+			try {
+				await this.app.fileManager.renameFile(file, step.toPath);
+				if (step.isFinal) renamed += 1;
+			} catch {
+				if (!failedLabels.has(step.label)) {
+					failedLabels.add(step.label);
+					failed += 1;
+					new Notice(
+						t('notice.batchRenameItemFailed', { name: step.label }),
+					);
+				}
+			}
+
+			if (delayMs > 0) await sleep(delayMs);
+		}
+
+		notice.setMessage(
+			t('notice.batchRenameDone', {
+				total,
+				renamed,
+				failed,
+			}),
+		);
+		window.setTimeout(() => notice.hide(), 5000);
 	}
 
 	/**
