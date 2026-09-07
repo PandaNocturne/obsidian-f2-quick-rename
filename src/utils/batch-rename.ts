@@ -27,6 +27,8 @@ export interface BatchFormatOptions {
 export interface BatchReplaceOptions {
 	find: string;
 	replace: string;
+	/** Treat `find` as a regular expression. */
+	useRegex?: boolean;
 	/** Replace on basename only and keep the original extension. */
 	basenameOnly?: boolean;
 	textCase: BatchTextCase;
@@ -36,18 +38,12 @@ export interface BatchReplaceOptions {
 export const BATCH_PLACEHOLDERS: ReadonlyArray<{
 	token: string;
 	/** i18n key suffix under modal.batch.placeholder.* */
-	labelKey:
-		| 'name'
-		| 'ext'
-		| 'index'
-		| 'date'
-		| 'folder';
+	labelKey: 'name' | 'ext' | 'index' | 'date';
 }> = [
 	{ token: '{name}', labelKey: 'name' },
 	{ token: '{ext}', labelKey: 'ext' },
 	{ token: '{n}', labelKey: 'index' },
 	{ token: '{date}', labelKey: 'date' },
-	{ token: '{folder}', labelKey: 'folder' },
 ];
 
 /**
@@ -120,7 +116,64 @@ export function splitWorkingLeafName(
 }
 
 /**
- * Apply one format / replace / case step to the current working names.
+ * Apply find/replace on a string. When `useRegex` is true, `find` is a
+ * RegExp source and `replace` may use `$1`, `$2`, … capture refs.
+ * Invalid patterns return the original text unchanged.
+ */
+export function applyFindReplace(
+	text: string,
+	find: string,
+	replace: string,
+	useRegex: boolean,
+): { result: string; error?: 'invalid-regex' } {
+	if (!find) return { result: text };
+	if (!useRegex) {
+		return { result: text.split(find).join(replace) };
+	}
+	try {
+		const re = new RegExp(find, 'g');
+		return { result: text.replace(re, replace) };
+	} catch {
+		return { result: text, error: 'invalid-regex' };
+	}
+}
+
+/** Remove numbering / digit runs from a basename and tidy leftover separators. */
+export function removeNumbering(basename: string): string {
+	let result = basename
+		.replace(/[(\[{（【［]\s*\d+\s*[)\]}）】］]/g, '')
+		.replace(/\d+/g, '');
+	result = result
+		.replace(/[_\-\s.·•]+/g, (chunk) => {
+			if (chunk.includes('_')) return '_';
+			if (chunk.includes('-')) return '-';
+			if (chunk.includes('.')) return '.';
+			return ' ';
+		})
+		.replace(/^[_\-.\s]+|[_\-.\s]+$/g, '')
+		.trim();
+	return result;
+}
+
+/**
+ * Insert a space between CJK characters and Latin letters / digits
+ * (both directions). Does not duplicate existing spaces.
+ */
+export function addSpaceBetweenCjkAndLatin(text: string): string {
+	const cjk = '\\u3400-\\u4DBF\\u4E00-\\u9FFF\\uF900-\\uFAFF';
+	const latin = 'A-Za-z0-9';
+	return text
+		.replace(new RegExp(`([${cjk}])([${latin}])`, 'g'), '$1 $2')
+		.replace(new RegExp(`([${latin}])([${cjk}])`, 'g'), '$1 $2');
+}
+
+export interface BatchTextProcessOptions {
+	removeNumbering?: boolean;
+	spaceCjkLatin?: boolean;
+}
+
+/**
+ * Apply one format / replace / case / text-process step to working names.
  * Does not touch the vault — preview only.
  */
 export function applyBatchProcessStep(
@@ -131,12 +184,16 @@ export function applyBatchProcessStep(
 		template: string;
 		find: string;
 		replace: string;
+		useRegex?: boolean;
 		textCase: BatchTextCase;
+		textProcess?: BatchTextProcessOptions;
 		startIndex?: number;
 	},
-): Map<string, string> {
+): { names: Map<string, string>; error?: 'invalid-regex' } {
 	const start = opts.startIndex ?? 1;
 	const next = new Map(workingNames);
+	let stepError: 'invalid-regex' | undefined;
+	const process = opts.textProcess ?? {};
 
 	files.forEach((file, i) => {
 		const current = workingNames.get(file.path) ?? file.name;
@@ -147,10 +204,14 @@ export function applyBatchProcessStep(
 			if (!opts.find) {
 				newName = current;
 			} else {
-				const nextBase = parts.name
-					.split(opts.find)
-					.join(opts.replace);
-				newName = `${nextBase}${parts.ext}`;
+				const replaced = applyFindReplace(
+					parts.name,
+					opts.find,
+					opts.replace,
+					Boolean(opts.useRegex),
+				);
+				if (replaced.error) stepError = replaced.error;
+				newName = `${replaced.result}${parts.ext}`;
 			}
 		} else {
 			const template =
@@ -161,11 +222,19 @@ export function applyBatchProcessStep(
 			});
 		}
 
+		if (process.removeNumbering || process.spaceCjkLatin) {
+			const split = splitWorkingLeafName(file, newName);
+			let base = split.name;
+			if (process.removeNumbering) base = removeNumbering(base);
+			if (process.spaceCjkLatin) base = addSpaceBetweenCjkAndLatin(base);
+			newName = `${base}${split.ext}`;
+		}
+
 		newName = applyTextCaseKeepingExt(file, newName, opts.textCase);
 		next.set(file.path, normalizeSpaces(newName) || current);
 	});
 
-	return next;
+	return { names: next, error: stepError };
 }
 
 /** Build preview rows from a working-name map. */
@@ -244,10 +313,21 @@ export function previewReplaceRename(
 			newName = file.name;
 		} else if (opts.basenameOnly !== false) {
 			const ext = file.extension ? `.${file.extension}` : '';
-			const nextBase = file.basename.split(find).join(opts.replace);
-			newName = `${nextBase}${ext}`;
+			const replaced = applyFindReplace(
+				file.basename,
+				find,
+				opts.replace,
+				Boolean(opts.useRegex),
+			);
+			newName = `${replaced.result}${ext}`;
 		} else {
-			newName = file.name.split(find).join(opts.replace);
+			const replaced = applyFindReplace(
+				file.name,
+				find,
+				opts.replace,
+				Boolean(opts.useRegex),
+			);
+			newName = replaced.result;
 		}
 		newName = applyTextCaseKeepingExt(file, newName, opts.textCase);
 		return finalizePreviewRow(file, newName);

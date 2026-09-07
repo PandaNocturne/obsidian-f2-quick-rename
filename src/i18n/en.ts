@@ -25,6 +25,7 @@ export const en = {
 	'notice.batchRenameDone':
 		'Batch rename done ({total}/{total})\nRenamed: {renamed} | Failed: {failed}',
 	'notice.batchRenameItemFailed': 'Failed to rename: {name}',
+	'notice.batchInvalidRegex': 'Invalid regular expression',
 	'notice.noEmbedToDelete':
 		'No embedded file under the cursor. This command only deletes embeds, not the current note.',
 	'notice.fullPropertiesMarkdownOnly':
@@ -77,28 +78,37 @@ export const en = {
 	'modal.batch.modeFormat': 'Format',
 	'modal.batch.modeReplace': 'Replace',
 	'modal.batch.nameLabel': 'Name',
-	'modal.batch.placeholderHint':
-		'Template for the full filename. Default {name}{ext}. Tokens: {name} basename, {ext} extension with dot, {n} index, {date} / {date:YYYY-MM-DD}, {folder} parent folder.',
 	'modal.batch.placeholder.name': 'Original name',
 	'modal.batch.placeholder.ext': 'Extension',
 	'modal.batch.placeholder.index': 'Index',
 	'modal.batch.placeholder.date': 'Date',
-	'modal.batch.placeholder.folder': 'Folder',
 	'modal.batch.findLabel': 'Find',
 	'modal.batch.replaceLabel': 'Replace with',
 	'modal.batch.findPlaceholder': 'Text to find in the filename',
 	'modal.batch.replacePlaceholder': 'Replacement text',
+	'modal.batch.findRegexPlaceholder': 'Regular expression, e.g. ^(\\d+)-',
+	'modal.batch.replaceRegexPlaceholder': 'Replacement, e.g. $1_',
+	'modal.batch.useRegex': 'Use regular expression',
 	'modal.batch.replaceHint':
-		'Replaces text in the basename only; the original extension is kept.',
+		'Replaces text in the basename only; the original extension is kept. With regex, use $1 / $2 for capture groups.',
 	'modal.batch.textCase': 'Text case',
 	'modal.batch.case.none': 'No change',
 	'modal.batch.case.upper': 'UPPERCASE',
 	'modal.batch.case.lower': 'lowercase',
 	'modal.batch.case.title': 'Title Case',
+	'modal.batch.textProcess': 'Text process',
+	'modal.batch.removeNumbering': 'Remove numbers',
+	'modal.batch.removeNumberingHint':
+		'Strip digit runs and numbered brackets from the basename',
+	'modal.batch.spaceCjkLatin': 'Space CJK / Latin',
+	'modal.batch.spaceCjkLatinHint':
+		'Insert a space between Chinese characters and Latin letters or digits',
 	'modal.batch.originalName': 'Original name',
 	'modal.batch.newName': 'New name',
 	'modal.batch.rename': 'Rename',
 	'modal.batch.process': 'Process',
+	'modal.batch.nextStep': 'Next',
+	'modal.batch.autoPreview': 'Auto preview',
 	'modal.batch.confirm': 'Confirm',
 	'modal.batch.undoStep': 'Undo step',
 	'modal.batch.removeItem': 'Remove from list',
@@ -108,8 +118,6 @@ export const en = {
 	'modal.batch.sortAsc': 'Sorted A → Z',
 	'modal.batch.sortDesc': 'Sorted Z → A',
 	'modal.batch.emptyList': 'No files in the list',
-	'modal.batch.processHint':
-		'Click Process to apply the current rule to the preview. You can process multiple times, then Confirm to rename files.',
 	'modal.batch.errorEmpty': '(empty name)',
 	'modal.batch.errorInvalid': '(invalid characters)',
 	'modal.batch.errorCollision': 'Conflict: {name}',

@@ -1,4 +1,4 @@
-import { App, Modal, TFile, setIcon } from 'obsidian';
+import { App, Modal, Notice, TFile, setIcon } from 'obsidian';
 import { t } from '../i18n';
 import {
 	BATCH_PLACEHOLDERS,
@@ -47,6 +47,11 @@ export class BatchRenameModal extends Modal {
 	private template = DEFAULT_BATCH_NAME_TEMPLATE;
 	private find = '';
 	private replace = '';
+	private useRegex = false;
+	private removeNumbering = false;
+	private spaceCjkLatin = false;
+	/** When true, rule edits update the preview live. Off by default. */
+	private autoPreview = false;
 	/** Header sort: 0 = list order, 1 = A→Z, -1 = Z→A. */
 	private nameSort: 0 | 1 | -1 = 0;
 	private dragFromIndex: number | null = null;
@@ -60,6 +65,7 @@ export class BatchRenameModal extends Modal {
 	private templateInput!: HTMLInputElement;
 	private findInput!: HTMLInputElement;
 	private replaceInput!: HTMLInputElement;
+	private regexToggle!: HTMLInputElement;
 	private formatPanel!: HTMLElement;
 	private replacePanel!: HTMLElement;
 	private previewBody!: HTMLElement;
@@ -187,7 +193,8 @@ export class BatchRenameModal extends Modal {
 	}
 
 	private renderControls(root: HTMLElement): void {
-		const modeRow = root.createDiv({ cls: 'f2-batch-field' });
+		const namingSection = root.createDiv({ cls: 'f2-batch-section' });
+		const modeRow = namingSection.createDiv({ cls: 'f2-batch-field' });
 		modeRow.createDiv({
 			cls: 'f2-batch-label',
 			text: t('modal.batch.namingMethod'),
@@ -210,15 +217,20 @@ export class BatchRenameModal extends Modal {
 			this.modeButtons.set(mode, btn);
 		}
 
-		this.formatPanel = root.createDiv({
+		this.formatPanel = namingSection.createDiv({
 			cls: 'f2-batch-mode-panel is-active',
 		});
 		this.renderFormatPanel(this.formatPanel);
 
-		this.replacePanel = root.createDiv({ cls: 'f2-batch-mode-panel' });
+		this.replacePanel = namingSection.createDiv({
+			cls: 'f2-batch-mode-panel',
+		});
 		this.renderReplacePanel(this.replacePanel);
 
-		const caseField = root.createDiv({ cls: 'f2-batch-field' });
+		root.createDiv({ cls: 'f2-batch-section-divider' });
+
+		const caseSection = root.createDiv({ cls: 'f2-batch-section' });
+		const caseField = caseSection.createDiv({ cls: 'f2-batch-field' });
 		caseField.createDiv({
 			cls: 'f2-batch-label',
 			text: t('modal.batch.textCase'),
@@ -253,10 +265,79 @@ export class BatchRenameModal extends Modal {
 			this.caseButtons.set(item.id, btn);
 		}
 
-		root.createDiv({
-			cls: 'f2-batch-hint',
-			text: t('modal.batch.processHint'),
+		root.createDiv({ cls: 'f2-batch-section-divider' });
+
+		const processSection = root.createDiv({ cls: 'f2-batch-section' });
+		const processField = processSection.createDiv({ cls: 'f2-batch-field' });
+		processField.createDiv({
+			cls: 'f2-batch-label',
+			text: t('modal.batch.textProcess'),
 		});
+		const processRow = processField.createDiv({
+			cls: 'f2-batch-process-row',
+		});
+
+		const removeNumBtn = processRow.createEl('button', {
+			cls: 'f2-batch-chip f2-batch-process-chip',
+			text: t('modal.batch.removeNumbering'),
+			attr: {
+				type: 'button',
+				title: t('modal.batch.removeNumberingHint'),
+				'aria-pressed': this.removeNumbering ? 'true' : 'false',
+			},
+		});
+		if (this.removeNumbering) removeNumBtn.addClass('is-active');
+		removeNumBtn.addEventListener('click', () => {
+			this.removeNumbering = !this.removeNumbering;
+			removeNumBtn.toggleClass('is-active', this.removeNumbering);
+			removeNumBtn.setAttr(
+				'aria-pressed',
+				this.removeNumbering ? 'true' : 'false',
+			);
+			this.onRuleChanged();
+		});
+
+		const spaceBtn = processRow.createEl('button', {
+			cls: 'f2-batch-chip f2-batch-process-chip',
+			text: t('modal.batch.spaceCjkLatin'),
+			attr: {
+				type: 'button',
+				title: t('modal.batch.spaceCjkLatinHint'),
+				'aria-pressed': this.spaceCjkLatin ? 'true' : 'false',
+			},
+		});
+		if (this.spaceCjkLatin) spaceBtn.addClass('is-active');
+		spaceBtn.addEventListener('click', () => {
+			this.spaceCjkLatin = !this.spaceCjkLatin;
+			spaceBtn.toggleClass('is-active', this.spaceCjkLatin);
+			spaceBtn.setAttr(
+				'aria-pressed',
+				this.spaceCjkLatin ? 'true' : 'false',
+			);
+			this.onRuleChanged();
+		});
+
+		const actions = root.createDiv({ cls: 'f2-batch-controls-actions' });
+		const autoRow = actions.createDiv({ cls: 'f2-batch-check-row' });
+		const autoLabel = autoRow.createEl('label', {
+			cls: 'f2-batch-check-label',
+		});
+		const autoToggle = autoLabel.createEl('input', {
+			attr: { type: 'checkbox' },
+		});
+		autoToggle.checked = this.autoPreview;
+		autoToggle.addEventListener('change', () => {
+			this.autoPreview = autoToggle.checked;
+			this.refreshPreview();
+		});
+		autoLabel.createSpan({ text: t('modal.batch.autoPreview') });
+
+		this.processBtn = actions.createEl('button', {
+			text: t('modal.batch.nextStep'),
+			cls: 'f2-rename-btn f2-rename-btn-primary mod-cta f2-batch-process',
+			attr: { type: 'button' },
+		});
+		this.processBtn.addEventListener('click', () => this.applyNextStep());
 	}
 
 	private renderFooter(root: HTMLElement): void {
@@ -269,13 +350,6 @@ export class BatchRenameModal extends Modal {
 		cancelBtn.addEventListener('click', () => this.finish(null));
 
 		const right = root.createDiv({ cls: 'f2-batch-footer-right' });
-		this.processBtn = right.createEl('button', {
-			text: t('modal.batch.process'),
-			cls: 'f2-rename-btn f2-batch-process',
-			attr: { type: 'button' },
-		});
-		this.processBtn.addEventListener('click', () => this.applyProcessStep());
-
 		this.confirmBtn = right.createEl('button', {
 			cls: 'f2-rename-btn f2-rename-btn-primary mod-cta f2-batch-confirm',
 			attr: { type: 'button' },
@@ -305,17 +379,13 @@ export class BatchRenameModal extends Modal {
 		this.templateInput.value = this.template;
 		this.templateInput.addEventListener('input', () => {
 			this.template = this.templateInput.value;
+			this.onRuleChanged();
 		});
 		this.templateInput.addEventListener('keydown', (evt) => {
 			if (evt.key === 'Enter') {
 				evt.preventDefault();
-				this.applyProcessStep();
+				this.applyNextStep();
 			}
-		});
-
-		field.createDiv({
-			cls: 'f2-batch-hint',
-			text: t('modal.batch.placeholderHint'),
 		});
 
 		const chips = field.createDiv({ cls: 'f2-batch-chips' });
@@ -327,9 +397,7 @@ export class BatchRenameModal extends Modal {
 						? 'modal.batch.placeholder.ext'
 						: item.labelKey === 'index'
 							? 'modal.batch.placeholder.index'
-							: item.labelKey === 'date'
-								? 'modal.batch.placeholder.date'
-								: 'modal.batch.placeholder.folder';
+							: 'modal.batch.placeholder.date';
 			const chip = chips.createEl('button', {
 				cls: 'f2-batch-chip',
 				text: t(labelKey),
@@ -338,6 +406,7 @@ export class BatchRenameModal extends Modal {
 			chip.addEventListener('click', () =>
 				this.insertToken(this.templateInput, item.token, (v) => {
 					this.template = v;
+					this.onRuleChanged();
 				}),
 			);
 		}
@@ -359,6 +428,7 @@ export class BatchRenameModal extends Modal {
 		});
 		this.findInput.addEventListener('input', () => {
 			this.find = this.findInput.value;
+			this.onRuleChanged();
 		});
 
 		const replaceField = panel.createDiv({ cls: 'f2-batch-field' });
@@ -376,13 +446,40 @@ export class BatchRenameModal extends Modal {
 		});
 		this.replaceInput.addEventListener('input', () => {
 			this.replace = this.replaceInput.value;
+			this.onRuleChanged();
 		});
 		this.replaceInput.addEventListener('keydown', (evt) => {
 			if (evt.key === 'Enter') {
 				evt.preventDefault();
-				this.applyProcessStep();
+				this.applyNextStep();
 			}
 		});
+
+		const regexRow = panel.createDiv({ cls: 'f2-batch-check-row' });
+		const regexLabel = regexRow.createEl('label', {
+			cls: 'f2-batch-check-label',
+		});
+		this.regexToggle = regexLabel.createEl('input', {
+			attr: { type: 'checkbox' },
+		});
+		this.regexToggle.checked = this.useRegex;
+		this.regexToggle.addEventListener('change', () => {
+			this.useRegex = this.regexToggle.checked;
+			this.findInput.setAttr(
+				'placeholder',
+				this.useRegex
+					? t('modal.batch.findRegexPlaceholder')
+					: t('modal.batch.findPlaceholder'),
+			);
+			this.replaceInput.setAttr(
+				'placeholder',
+				this.useRegex
+					? t('modal.batch.replaceRegexPlaceholder')
+					: t('modal.batch.replacePlaceholder'),
+			);
+			this.onRuleChanged();
+		});
+		regexLabel.createSpan({ text: t('modal.batch.useRegex') });
 
 		panel.createDiv({
 			cls: 'f2-batch-hint',
@@ -399,6 +496,7 @@ export class BatchRenameModal extends Modal {
 		}
 		this.formatPanel.toggleClass('is-active', mode === 'format');
 		this.replacePanel.toggleClass('is-active', mode === 'replace');
+		this.onRuleChanged();
 		window.setTimeout(() => {
 			if (mode === 'format') {
 				this.templateInput.focus();
@@ -416,6 +514,7 @@ export class BatchRenameModal extends Modal {
 			btn.toggleClass('is-active', id === mode);
 			btn.setAttr('aria-pressed', id === mode ? 'true' : 'false');
 		}
+		this.onRuleChanged();
 	}
 
 	private insertToken(
@@ -434,33 +533,81 @@ export class BatchRenameModal extends Modal {
 		input.setSelectionRange(caret, caret);
 	}
 
-	/** Apply the current rule to working names (preview only). */
-	private applyProcessStep(): void {
-		this.history.push(new Map(this.workingNames));
-		this.workingNames = applyBatchProcessStep(
+	private getStepOptions() {
+		return {
+			template: this.template,
+			find: this.find,
+			replace: this.replace,
+			useRegex: this.useRegex,
+			textCase: this.textCase,
+			textProcess: {
+				removeNumbering: this.removeNumbering,
+				spaceCjkLatin: this.spaceCjkLatin,
+			},
+		};
+	}
+
+	/** Live draft: current rules applied on top of committed working names. */
+	private computeDraftNames(): {
+		names: Map<string, string>;
+		error?: 'invalid-regex';
+	} {
+		return applyBatchProcessStep(
 			this.files,
 			this.workingNames,
 			this.mode,
-			{
-				template: this.template,
-				find: this.find,
-				replace: this.replace,
-				textCase: this.textCase,
-			},
+			this.getStepOptions(),
 		);
+	}
+
+	private refreshPreview(): void {
 		this.renderPreviewRows();
 		this.syncActionState();
+	}
+
+	/** Refresh list only when auto-preview is on (rule edits). */
+	private onRuleChanged(): void {
+		if (this.autoPreview) this.refreshPreview();
+		else this.syncActionState();
+	}
+
+	/** Commit the live draft as the next baseline step. */
+	private applyNextStep(): void {
+		const draft = this.computeDraftNames();
+		if (draft.error === 'invalid-regex') {
+			new Notice(t('notice.batchInvalidRegex'));
+			return;
+		}
+
+		let changed = false;
+		for (const file of this.files) {
+			const before = this.workingNames.get(file.path) ?? file.name;
+			const after = draft.names.get(file.path) ?? file.name;
+			if (before !== after) {
+				changed = true;
+				break;
+			}
+		}
+		if (!changed) return;
+
+		this.history.push(new Map(this.workingNames));
+		this.workingNames = draft.names;
+		this.refreshPreview();
 	}
 
 	private undoLastStep(): void {
 		const prev = this.history.pop();
 		if (!prev) return;
 		this.workingNames = prev;
-		this.renderPreviewRows();
-		this.syncActionState();
+		this.refreshPreview();
 	}
 
 	private computePreviews(): BatchRenamePreview[] {
+		if (this.autoPreview) {
+			const draft = this.computeDraftNames();
+			const names = draft.error ? this.workingNames : draft.names;
+			return previewFromWorkingNames(this.app, this.files, names);
+		}
 		return previewFromWorkingNames(
 			this.app,
 			this.files,
