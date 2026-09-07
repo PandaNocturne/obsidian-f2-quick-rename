@@ -59,6 +59,8 @@ export class BatchRenameModal extends Modal {
 
 	/** Committed baseline names for the current step (shown as 原名称). */
 	private workingNames = new Map<string, string>();
+	/** Paths included in the current step (rules apply only to these). */
+	private selectedPaths = new Set<string>();
 	/** Snapshots before each 下一步, for undo. */
 	private history: Array<Map<string, string>> = [];
 
@@ -71,6 +73,7 @@ export class BatchRenameModal extends Modal {
 	private replacePanel!: HTMLElement;
 	private previewBody!: HTMLElement;
 	private countEl!: HTMLElement;
+	private selectAllToggle!: HTMLInputElement;
 	private sortBtn!: HTMLButtonElement;
 	private processBtn!: HTMLButtonElement;
 	private confirmBtn!: HTMLButtonElement;
@@ -93,6 +96,7 @@ export class BatchRenameModal extends Modal {
 		this.modalMaxHeight = opts.modalMaxHeight ?? DEFAULT_MODAL_MAX_HEIGHT;
 		for (const file of this.files) {
 			this.workingNames.set(file.path, file.name);
+			this.selectedPaths.add(file.path);
 		}
 	}
 
@@ -142,6 +146,31 @@ export class BatchRenameModal extends Modal {
 
 	private renderPreview(root: HTMLElement): void {
 		const head = root.createDiv({ cls: 'f2-batch-preview-head' });
+		const selectAllWrap = head.createDiv({ cls: 'f2-batch-col-check' });
+		this.selectAllToggle = selectAllWrap.createEl('input', {
+			cls: 'f2-batch-check',
+			attr: {
+				type: 'checkbox',
+				title: t('modal.batch.selectAll'),
+				'aria-label': t('modal.batch.selectAll'),
+			},
+		});
+		this.selectAllToggle.checked = true;
+		this.selectAllToggle.addEventListener('change', () => {
+			if (this.selectAllToggle.checked) {
+				for (const file of this.files) {
+					this.selectedPaths.add(file.path);
+				}
+			} else {
+				this.selectedPaths.clear();
+			}
+			this.refreshPreview();
+		});
+		// Don't start a row drag from the header checkbox.
+		this.selectAllToggle.addEventListener('mousedown', (evt) => {
+			evt.stopPropagation();
+		});
+
 		head.createSpan({ cls: 'f2-batch-col-icon', text: '' });
 		const oldHead = head.createDiv({ cls: 'f2-batch-col-old' });
 		oldHead.createSpan({ text: t('modal.batch.originalName') });
@@ -586,7 +615,10 @@ export class BatchRenameModal extends Modal {
 			this.files,
 			this.workingNames,
 			this.mode,
-			this.getStepOptions(),
+			{
+				...this.getStepOptions(),
+				selectedPaths: this.selectedPaths,
+			},
 		);
 	}
 
@@ -691,6 +723,7 @@ export class BatchRenameModal extends Modal {
 		if (!file) return;
 		this.files.splice(index, 1);
 		this.workingNames.delete(file.path);
+		this.selectedPaths.delete(file.path);
 		for (const snap of this.history) {
 			snap.delete(file.path);
 		}
@@ -704,12 +737,30 @@ export class BatchRenameModal extends Modal {
 	private clearList(): void {
 		this.files = [];
 		this.workingNames.clear();
+		this.selectedPaths.clear();
 		this.history = [];
 		this.nameSort = 0;
 		this.syncSortButton();
 		this.updateTitle();
 		this.renderPreviewRows();
 		this.syncActionState();
+	}
+
+	private setPathSelected(path: string, selected: boolean): void {
+		if (selected) this.selectedPaths.add(path);
+		else this.selectedPaths.delete(path);
+		this.refreshPreview();
+	}
+
+	private syncSelectAllToggle(): void {
+		if (!this.selectAllToggle) return;
+		const total = this.files.length;
+		const selected = this.files.filter((f) =>
+			this.selectedPaths.has(f.path),
+		).length;
+		this.selectAllToggle.checked = total > 0 && selected === total;
+		this.selectAllToggle.indeterminate = selected > 0 && selected < total;
+		this.selectAllToggle.disabled = total === 0;
 	}
 
 	private cycleNameSort(): void {
@@ -772,6 +823,7 @@ export class BatchRenameModal extends Modal {
 				text: t('modal.batch.emptyList'),
 			});
 			this.countEl.setText('(0/0)');
+			this.syncSelectAllToggle();
 			return;
 		}
 
@@ -781,12 +833,15 @@ export class BatchRenameModal extends Modal {
 
 			const baseline =
 				this.workingNames.get(row.file.path) ?? row.file.name;
-			const stepChanged = !row.error && row.newName !== baseline;
+			const selected = this.selectedPaths.has(row.file.path);
+			const stepChanged =
+				selected && !row.error && row.newName !== baseline;
 
 			const el = this.previewBody.createDiv({
 				cls: 'f2-batch-preview-row',
 				attr: { draggable: 'true', 'data-index': String(index) },
 			});
+			if (!selected) el.addClass('is-unselected');
 			if (row.error) el.addClass('is-error');
 			else if (stepChanged) el.addClass('is-changed');
 
@@ -819,6 +874,26 @@ export class BatchRenameModal extends Modal {
 					Number(evt.dataTransfer?.getData('text/plain'));
 				if (!Number.isFinite(from)) return;
 				this.moveFile(from, index);
+			});
+
+			const checkWrap = el.createDiv({ cls: 'f2-batch-col-check' });
+			const check = checkWrap.createEl('input', {
+				cls: 'f2-batch-check',
+				attr: {
+					type: 'checkbox',
+					title: t('modal.batch.selectItem'),
+					'aria-label': t('modal.batch.selectItem'),
+				},
+			});
+			check.checked = selected;
+			check.addEventListener('change', () => {
+				this.setPathSelected(row.file.path, check.checked);
+			});
+			check.addEventListener('mousedown', (evt) => {
+				evt.stopPropagation();
+			});
+			check.addEventListener('click', (evt) => {
+				evt.stopPropagation();
 			});
 
 			const icon = el.createDiv({ cls: 'f2-batch-col-icon' });
@@ -867,6 +942,7 @@ export class BatchRenameModal extends Modal {
 		});
 
 		this.countEl.setText(`(${vaultChangeCount}/${this.files.length})`);
+		this.syncSelectAllToggle();
 	}
 
 	private syncActionState(): void {
@@ -876,6 +952,7 @@ export class BatchRenameModal extends Modal {
 			(row) => row.changed && !row.error,
 		).length;
 		const empty = this.files.length === 0;
+		const noneSelected = this.selectedPaths.size === 0;
 
 		this.undoBtn.disabled = this.history.length === 0;
 		this.undoBtn.toggleClass('is-disabled', this.history.length === 0);
@@ -883,8 +960,8 @@ export class BatchRenameModal extends Modal {
 		this.clearBtn.disabled = empty;
 		this.clearBtn.toggleClass('is-disabled', empty);
 
-		this.processBtn.disabled = empty;
-		this.processBtn.toggleClass('is-disabled', empty);
+		this.processBtn.disabled = empty || noneSelected;
+		this.processBtn.toggleClass('is-disabled', empty || noneSelected);
 
 		this.confirmBtn.disabled = empty || hasError || changeCount === 0;
 		this.confirmBtn.toggleClass(

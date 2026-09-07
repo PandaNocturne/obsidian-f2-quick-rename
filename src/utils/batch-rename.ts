@@ -281,6 +281,8 @@ export function applyBatchProcessStep(
 		textCase: BatchTextCase;
 		textProcess?: BatchTextProcessOptions;
 		startIndex?: number;
+		/** When set, only these paths are transformed; others keep working names. */
+		selectedPaths?: ReadonlySet<string>;
 	},
 ): { names: Map<string, string>; error?: 'invalid-regex' } {
 	const start = opts.startIndex ?? 1;
@@ -288,11 +290,20 @@ export function applyBatchProcessStep(
 	let stepError: 'invalid-regex' | undefined;
 	const process = opts.textProcess ?? {};
 	const hasProcess = BATCH_TEXT_PROCESS_IDS.some((id) => process[id]);
+	const selected = opts.selectedPaths;
+	let selectedOrdinal = 0;
 
-	files.forEach((file, i) => {
+	files.forEach((file) => {
 		const current = workingNames.get(file.path) ?? file.name;
+		if (selected && !selected.has(file.path)) {
+			next.set(file.path, current);
+			return;
+		}
+
 		const parts = splitWorkingLeafName(file, current);
 		let newName: string;
+		const index = start + selectedOrdinal;
+		selectedOrdinal += 1;
 
 		if (mode === 'replace') {
 			if (!opts.find) {
@@ -310,7 +321,7 @@ export function applyBatchProcessStep(
 		} else {
 			const template =
 				opts.template.trim() || DEFAULT_BATCH_NAME_TEMPLATE;
-			newName = expandBatchNameTemplate(file, template, start + i, {
+			newName = expandBatchNameTemplate(file, template, index, {
 				name: parts.name,
 				ext: parts.ext,
 			});

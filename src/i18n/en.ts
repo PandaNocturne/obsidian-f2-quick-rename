@@ -139,6 +139,8 @@ export const en = {
 		'Insert a space between Chinese characters and Latin letters or digits',
 	'modal.batch.originalName': 'Original name',
 	'modal.batch.newName': 'New name',
+	'modal.batch.selectAll': 'Select all for this step',
+	'modal.batch.selectItem': 'Include in this step',
 	'modal.batch.rename': 'Rename',
 	'modal.batch.process': 'Process',
 	'modal.batch.nextStep': 'Next',

@@ -126,6 +126,8 @@ export const zhCN: Record<TranslationKey, string> = {
 		'在中文与英文/数字相邻处插入空格',
 	'modal.batch.originalName': '原名称',
 	'modal.batch.newName': '新名称',
+	'modal.batch.selectAll': '全选（本步生效）',
+	'modal.batch.selectItem': '本步包含此项',
 	'modal.batch.rename': '重命名',
 	'modal.batch.process': '处理',
 	'modal.batch.nextStep': '下一步',
