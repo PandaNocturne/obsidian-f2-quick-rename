@@ -158,6 +158,11 @@ export interface F2RenameSettings {
 	 */
 	batchRename: boolean;
 	/**
+	 * During batch rename, first move files to timestamp temp names, then to
+	 * final names (avoids swap conflicts). Defaults to false (direct rename).
+	 */
+	batchRenameTempLayer: boolean;
+	/**
 	 * Show a delete button in the rename panel header.
 	 * Deletes the related file (after confirm); copyable types are copied first.
 	 */
@@ -236,6 +241,7 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	propertiesDefaultCollapsed: true,
 	editExtension: false,
 	batchRename: false,
+	batchRenameTempLayer: false,
 	showHeaderDelete: true,
 	confirmBeforeDelete: true,
 	copyOnDeleteTypes: DEFAULT_COPY_ON_DELETE_TYPES,

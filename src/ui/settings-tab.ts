@@ -131,6 +131,11 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 		descKey: 'settings.features.batchRename.desc',
 	},
 	{
+		key: 'batchRenameTempLayer',
+		nameKey: 'settings.features.batchRenameTempLayer.name',
+		descKey: 'settings.features.batchRenameTempLayer.desc',
+	},
+	{
 		key: 'showHeaderDelete',
 		nameKey: 'settings.features.showHeaderDelete.name',
 		descKey: 'settings.features.showHeaderDelete.desc',

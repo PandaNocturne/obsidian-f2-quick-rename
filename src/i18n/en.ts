@@ -82,6 +82,22 @@ export const en = {
 	'modal.batch.placeholder.ext': 'Extension',
 	'modal.batch.placeholder.index': 'Index',
 	'modal.batch.placeholder.date': 'Date',
+	'modal.batch.help': 'Help',
+	'modal.batch.helpTitle': 'Format placeholders',
+	'modal.batch.help.syntax': 'Syntax',
+	'modal.batch.help.meaning': 'Meaning',
+	'modal.batch.help.token.name': 'Basename for the current step',
+	'modal.batch.help.token.ext': 'Extension with a leading dot (e.g. .md)',
+	'modal.batch.help.token.index': 'List index (starts at 1)',
+	'modal.batch.help.token.indexPad':
+		'Zero-padded index to 3 digits → 001',
+	'modal.batch.help.token.date': 'Today, default YYYYMMDD',
+	'modal.batch.help.token.dateFmt':
+		'Custom date (moment format)',
+	'modal.batch.help.token.ctime': 'Created time',
+	'modal.batch.help.token.mtime': 'Modified time',
+	'modal.batch.help.token.folder':
+		'Parent folder name (no chip; type it in)',
 	'modal.batch.findLabel': 'Find',
 	'modal.batch.replaceLabel': 'Replace with',
 	'modal.batch.findPlaceholder': 'Text to find in the filename',
@@ -208,6 +224,10 @@ export const en = {
 	'settings.features.batchRename.name': 'Batch F2 rename',
 	'settings.features.batchRename.desc':
 		'When a multi-line selection contains multiple embeds or links, F2 opens a batch rename panel (format template or find/replace). Off by default.',
+	'settings.features.batchRenameTempLayer.name':
+		'Temporary names during batch rename',
+	'settings.features.batchRenameTempLayer.desc':
+		'When on, each file is first renamed to a timestamp temp name, then to the final name (helps with swaps / chains). Off by default: rename directly to the target name.',
 	'settings.features.showHeaderDelete.name': 'Delete button in rename panel',
 	'settings.features.showHeaderDelete.desc':
 		'Show a delete button in the rename panel header. After confirmation, copyable files are copied to the clipboard (Markdown without YAML) and the file is moved to trash.',

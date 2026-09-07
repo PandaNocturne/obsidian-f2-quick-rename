@@ -431,13 +431,18 @@ export interface BatchRenameStep {
 }
 
 /**
- * Build a two-phase rename plan so chain / swap conflicts are safe:
- * 1) move each file to a unique temporary name
+ * Build a rename plan for batch execution.
+ *
+ * When `useTempLayer` is true, uses two phases so chain / swap conflicts are safe:
+ * 1) move each file to a unique temporary name (timestamp-based)
  * 2) move each temporary file to its final name
+ *
+ * When false (default), renames directly to the final name in one step.
  */
 export function planBatchRenameSteps(
 	app: App,
 	items: { file: TFile; newName: string }[],
+	opts: { useTempLayer?: boolean } = {},
 ): BatchRenameStep[] {
 	const steps: BatchRenameStep[] = [];
 	const batchPaths = new Set(items.map((item) => item.file.path));
@@ -468,7 +473,19 @@ export function planBatchRenameSteps(
 	}
 	if (finals.length === 0) return steps;
 
-	const token = Date.now().toString(36);
+	if (!opts.useTempLayer) {
+		for (const row of finals) {
+			steps.push({
+				fromPath: row.file.path,
+				toPath: row.finalPath,
+				label: row.label,
+				isFinal: true,
+			});
+		}
+		return steps;
+	}
+
+	let stamp = Date.now();
 	const temps: Array<{
 		tempPath: string;
 		finalPath: string;
@@ -476,12 +493,10 @@ export function planBatchRenameSteps(
 		fromPath: string;
 	}> = [];
 
-	for (let i = 0; i < finals.length; i++) {
-		const row = finals[i];
-		if (!row) continue;
+	for (const row of finals) {
 		const parent = row.file.parent?.path ?? '';
 		const ext = row.file.extension ? `.${row.file.extension}` : '';
-		const tempName = `__f2batch_${token}_${i}${ext}`;
+		const tempName = `__f2batch_${stamp++}${ext}`;
 		const tempPath = normalizePath(
 			parent ? `${parent}/${tempName}` : tempName,
 		);

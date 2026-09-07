@@ -1216,6 +1216,41 @@
 	display: flex;
 }
 
+.f2-batch-help-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-ui-small);
+}
+
+.f2-batch-help-table th,
+.f2-batch-help-table td {
+	padding: 0.35rem 0.45rem;
+	text-align: left;
+	vertical-align: top;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.f2-batch-help-table th {
+	color: var(--text-muted);
+	font-weight: var(--font-medium);
+}
+
+.f2-batch-help-syntax {
+	white-space: nowrap;
+	font-family: var(--font-monospace);
+	color: var(--text-accent);
+	padding-right: 0.75rem;
+}
+
+.modal.f2-batch-help-modal {
+	width: min(92vw, 520px);
+}
+
+.f2-batch-help-modal .f2-batch-help-title {
+	margin: 0 0 0.75rem;
+	font-size: var(--font-ui-medium);
+}
+
 .f2-batch-input {
 	width: 100%;
 }

@@ -191,7 +191,9 @@ export class RenameService {
 		});
 		if (!result || result.length === 0) return;
 
-		const steps = planBatchRenameSteps(this.app, result);
+		const steps = planBatchRenameSteps(this.app, result, {
+			useTempLayer: settings.batchRenameTempLayer,
+		});
 		if (steps.length === 0) return;
 
 		const delayMs = settings.attachmentRenameDelayMs;

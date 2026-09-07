@@ -17,6 +17,7 @@ import {
 	renameFileKindIcon,
 	resolveRenameFileKind,
 } from '../utils/embed';
+import { BatchRenameHelpModal } from './batch-rename-help-modal';
 
 /** Wider than the single-file rename panel (list + rules). */
 const DEFAULT_BATCH_MODAL_WIDTH = '92vw, 1100px';
@@ -338,6 +339,15 @@ export class BatchRenameModal extends Modal {
 		cancelBtn.addEventListener('click', () => this.finish(null));
 
 		const right = root.createDiv({ cls: 'f2-batch-footer-right' });
+		const helpBtn = right.createEl('button', {
+			text: t('modal.batch.help'),
+			cls: 'f2-rename-btn f2-batch-help-btn',
+			attr: { type: 'button' },
+		});
+		helpBtn.addEventListener('click', () => {
+			new BatchRenameHelpModal(this.app).open();
+		});
+
 		this.confirmBtn = right.createEl('button', {
 			cls: 'f2-rename-btn f2-rename-btn-primary mod-cta f2-batch-confirm',
 			attr: { type: 'button' },
