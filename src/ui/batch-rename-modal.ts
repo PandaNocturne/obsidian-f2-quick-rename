@@ -197,21 +197,19 @@ export class BatchRenameModal extends Modal {
 			cls: 'f2-batch-col-new',
 			text: t('modal.batch.newName'),
 		});
-		head.createSpan({ cls: 'f2-batch-col-actions', text: '' });
-		this.previewBody = root.createDiv({ cls: 'f2-batch-preview-body' });
-
-		const listBar = root.createDiv({ cls: 'f2-batch-list-bar' });
-		const listLeft = listBar.createDiv({ cls: 'f2-batch-list-bar-left' });
-		this.clearBtn = listLeft.createEl('button', {
-			cls: 'f2-rename-btn',
-			attr: { type: 'button' },
+		const headActions = head.createDiv({ cls: 'f2-batch-col-actions' });
+		this.clearBtn = headActions.createEl('button', {
+			cls: 'f2-batch-row-btn f2-batch-clear-btn',
+			attr: {
+				type: 'button',
+				title: t('modal.batch.clearList'),
+				'aria-label': t('modal.batch.clearList'),
+			},
 		});
-		const clearIcon = this.clearBtn.createSpan({
-			cls: 'f2-batch-btn-icon',
-		});
-		setIcon(clearIcon, 'trash-2');
-		this.clearBtn.createSpan({ text: t('modal.batch.clearList') });
+		setIcon(this.clearBtn, 'trash-2');
 		this.clearBtn.addEventListener('click', () => this.clearList());
+
+		this.previewBody = root.createDiv({ cls: 'f2-batch-preview-body' });
 	}
 
 	private renderControls(root: HTMLElement): void {
@@ -373,29 +371,33 @@ export class BatchRenameModal extends Modal {
 
 	private renderFooter(root: HTMLElement): void {
 		const left = root.createDiv({ cls: 'f2-batch-footer-left' });
-		const cancelBtn = left.createEl('button', {
-			text: t('common.cancel'),
-			cls: 'f2-rename-btn',
-			attr: { type: 'button' },
-		});
-		cancelBtn.addEventListener('click', () => this.finish(null));
-
-		const right = root.createDiv({ cls: 'f2-batch-footer-right' });
-		const helpBtn = right.createEl('button', {
-			text: t('modal.batch.help'),
+		const helpBtn = left.createEl('button', {
 			cls: 'f2-rename-btn f2-batch-help-btn',
 			attr: { type: 'button' },
 		});
+		const helpIcon = helpBtn.createSpan({ cls: 'f2-batch-btn-icon' });
+		setIcon(helpIcon, 'circle-help');
+		helpBtn.createSpan({ text: t('modal.batch.help') });
 		helpBtn.addEventListener('click', () => {
 			new BatchRenameHelpModal(this.app).open();
 		});
+
+		const right = root.createDiv({ cls: 'f2-batch-footer-right' });
+		const cancelBtn = right.createEl('button', {
+			cls: 'f2-rename-btn f2-batch-cancel-btn',
+			attr: { type: 'button' },
+		});
+		const cancelIcon = cancelBtn.createSpan({ cls: 'f2-batch-btn-icon' });
+		setIcon(cancelIcon, 'x');
+		cancelBtn.createSpan({ text: t('common.cancel') });
+		cancelBtn.addEventListener('click', () => this.finish(null));
 
 		this.confirmBtn = right.createEl('button', {
 			cls: 'f2-rename-btn f2-rename-btn-primary mod-cta f2-batch-confirm',
 			attr: { type: 'button' },
 		});
 		const confirmIcon = this.confirmBtn.createSpan({
-			cls: 'f2-batch-confirm-icon',
+			cls: 'f2-batch-btn-icon',
 		});
 		setIcon(confirmIcon, 'check');
 		this.confirmBtn.createSpan({ text: t('modal.batch.confirm') });
@@ -429,18 +431,17 @@ export class BatchRenameModal extends Modal {
 		});
 
 		const chips = field.createDiv({ cls: 'f2-batch-chips' });
+		const labelKeys = {
+			name: 'modal.batch.placeholder.name',
+			ext: 'modal.batch.placeholder.ext',
+			index: 'modal.batch.placeholder.index',
+			date: 'modal.batch.placeholder.date',
+			folder: 'modal.batch.placeholder.folder',
+		} as const;
 		for (const item of BATCH_PLACEHOLDERS) {
-			const labelKey =
-				item.labelKey === 'name'
-					? 'modal.batch.placeholder.name'
-					: item.labelKey === 'ext'
-						? 'modal.batch.placeholder.ext'
-						: item.labelKey === 'index'
-							? 'modal.batch.placeholder.index'
-							: 'modal.batch.placeholder.date';
 			const chip = chips.createEl('button', {
 				cls: 'f2-batch-chip',
-				text: t(labelKey),
+				text: t(labelKeys[item.labelKey]),
 				attr: { type: 'button', title: item.token },
 			});
 			chip.addEventListener('click', () =>
@@ -520,11 +521,6 @@ export class BatchRenameModal extends Modal {
 			this.onRuleChanged();
 		});
 		regexLabel.createSpan({ text: t('modal.batch.useRegex') });
-
-		panel.createDiv({
-			cls: 'f2-batch-hint',
-			text: t('modal.batch.replaceHint'),
-		});
 	}
 
 	private setMode(mode: BatchRenameMode): void {

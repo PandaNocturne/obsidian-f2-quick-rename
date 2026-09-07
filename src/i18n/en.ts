@@ -82,6 +82,7 @@ export const en = {
 	'modal.batch.placeholder.ext': 'Extension',
 	'modal.batch.placeholder.index': 'Index',
 	'modal.batch.placeholder.date': 'Date',
+	'modal.batch.placeholder.folder': 'Folder',
 	'modal.batch.help': 'Help',
 	'modal.batch.helpTitle': 'Format placeholders',
 	'modal.batch.help.syntax': 'Syntax',
@@ -97,7 +98,7 @@ export const en = {
 	'modal.batch.help.token.ctime': 'Created time',
 	'modal.batch.help.token.mtime': 'Modified time',
 	'modal.batch.help.token.folder':
-		'Parent folder name (no chip; type it in)',
+		'Name of the parent folder',
 	'modal.batch.findLabel': 'Find',
 	'modal.batch.replaceLabel': 'Replace with',
 	'modal.batch.findPlaceholder': 'Text to find in the filename',
@@ -105,8 +106,6 @@ export const en = {
 	'modal.batch.findRegexPlaceholder': 'Regular expression, e.g. ^(\\d+)-',
 	'modal.batch.replaceRegexPlaceholder': 'Replacement, e.g. $1_',
 	'modal.batch.useRegex': 'Use regular expression',
-	'modal.batch.replaceHint':
-		'Replaces text in the basename only; the original extension is kept. With regex, use $1 / $2 for capture groups.',
 	'modal.batch.textCase': 'Text case',
 	'modal.batch.case.none': 'No change',
 	'modal.batch.case.upper': 'UPPERCASE',

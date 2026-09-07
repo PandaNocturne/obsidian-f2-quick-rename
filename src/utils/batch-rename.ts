@@ -38,12 +38,13 @@ export interface BatchReplaceOptions {
 export const BATCH_PLACEHOLDERS: ReadonlyArray<{
 	token: string;
 	/** i18n key suffix under modal.batch.placeholder.* */
-	labelKey: 'name' | 'ext' | 'index' | 'date';
+	labelKey: 'name' | 'ext' | 'index' | 'date' | 'folder';
 }> = [
 	{ token: '{name}', labelKey: 'name' },
 	{ token: '{ext}', labelKey: 'ext' },
 	{ token: '{n}', labelKey: 'index' },
 	{ token: '{date}', labelKey: 'date' },
+	{ token: '{folder}', labelKey: 'folder' },
 ];
 
 /**
