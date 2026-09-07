@@ -20,6 +20,12 @@ export const zhCN: Record<TranslationKey, string> = {
 	'settings.tab.attachments': '附件重命名',
 
 	'notice.noOpenFile': '没有打开的文件',
+	'notice.noBatchFiles': '请选中包含至少两个嵌入或链接的多行内容',
+	'notice.batchRenameProgress':
+		'批量重命名 ({current}/{total})\n成功: {renamed} | 失败: {failed}\n{status}',
+	'notice.batchRenameDone':
+		'批量重命名完成 ({total}/{total})\n成功: {renamed} | 失败: {failed}',
+	'notice.batchRenameItemFailed': '重命名失败：{name}',
 	'notice.noEmbedToDelete':
 		'光标处没有嵌入文档。此命令只删除嵌入目标，不会删除当前笔记。',
 	'notice.fullPropertiesMarkdownOnly': '仅支持 Markdown 笔记的全属性面板',
@@ -59,6 +65,47 @@ export const zhCN: Record<TranslationKey, string> = {
 	'modal.attachments.currentName': '当前',
 	'modal.attachments.newName': '新名称',
 	'modal.attachments.resetSuggestions': '重置建议名',
+
+	'modal.batch.title': '批量重命名 ({count})',
+	'modal.batch.namingMethod': '命名方式',
+	'modal.batch.modeFormat': '格式',
+	'modal.batch.modeReplace': '替换',
+	'modal.batch.nameLabel': '名称',
+	'modal.batch.placeholderHint':
+		'完整文件名模板，默认为 {name}{ext}。占位符：{name} 原始名、{ext} 扩展名（含点）、{n} 序号、{date} / {date:YYYY-MM-DD} 日期、{folder} 所在文件夹。',
+	'modal.batch.placeholder.name': '原始名',
+	'modal.batch.placeholder.ext': '扩展名',
+	'modal.batch.placeholder.index': '序号',
+	'modal.batch.placeholder.date': '日期',
+	'modal.batch.placeholder.folder': '文件夹',
+	'modal.batch.findLabel': '查找',
+	'modal.batch.replaceLabel': '替换为',
+	'modal.batch.findPlaceholder': '在文件名中查找的文本',
+	'modal.batch.replacePlaceholder': '替换成的文本',
+	'modal.batch.replaceHint': '仅替换文件名主体，保留原扩展名。',
+	'modal.batch.textCase': '文本格式',
+	'modal.batch.case.none': '不变',
+	'modal.batch.case.upper': '全大写',
+	'modal.batch.case.lower': '全小写',
+	'modal.batch.case.title': '首字母大写',
+	'modal.batch.originalName': '原名称',
+	'modal.batch.newName': '新名称',
+	'modal.batch.rename': '重命名',
+	'modal.batch.process': '处理',
+	'modal.batch.confirm': '确认',
+	'modal.batch.undoStep': '撤销上一步',
+	'modal.batch.removeItem': '从列表移除',
+	'modal.batch.clearList': '清除列表',
+	'modal.batch.dragToReorder': '拖动排序',
+	'modal.batch.sortByName': '按原文件名排序',
+	'modal.batch.sortAsc': '已按 A → Z 排序',
+	'modal.batch.sortDesc': '已按 Z → A 排序',
+	'modal.batch.emptyList': '列表中没有文件',
+	'modal.batch.processHint':
+		'点击「处理」将当前规则应用到预览，可多次处理；点击「确认」后才会真正重命名文件。',
+	'modal.batch.errorEmpty': '（名称为空）',
+	'modal.batch.errorInvalid': '（含非法字符）',
+	'modal.batch.errorCollision': '冲突：{name}',
 
 	'tooltip.doubleClickToEdit': '双击编辑',
 	'tooltip.clickIconOpenDoubleClickEdit': '点击图标打开，双击编辑',
@@ -141,6 +188,9 @@ export const zhCN: Record<TranslationKey, string> = {
 	'settings.features.editExtension.name': '双击修改扩展名',
 	'settings.features.editExtension.desc':
 		'开启后，可在重命名面板中双击文件名后的扩展名进行编辑（例如 .md）。默认关闭。',
+	'settings.features.batchRename.name': '批量 F2 重命名',
+	'settings.features.batchRename.desc':
+		'在笔记中选中包含多个嵌入或链接的多行内容时，按 F2 打开批量重命名面板（格式模板或查找替换）。默认关闭。',
 	'settings.features.showHeaderDelete.name': '重命名面板显示删除按钮',
 	'settings.features.showHeaderDelete.desc':
 		'在重命名面板标题栏显示删除按钮。确认后，可复制类型会先写入剪贴板（Markdown 不含 YAML），再将文件移入回收站。',

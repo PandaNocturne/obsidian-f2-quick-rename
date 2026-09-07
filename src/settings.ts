@@ -153,6 +153,11 @@ export interface F2RenameSettings {
 	 */
 	editExtension: boolean;
 	/**
+	 * When a multi-line editor selection contains multiple embeds/links,
+	 * F2 opens a batch rename panel. Defaults to false.
+	 */
+	batchRename: boolean;
+	/**
 	 * Show a delete button in the rename panel header.
 	 * Deletes the related file (after confirm); copyable types are copied first.
 	 */
@@ -230,6 +235,7 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	autoSaveProperties: true,
 	propertiesDefaultCollapsed: true,
 	editExtension: false,
+	batchRename: false,
 	showHeaderDelete: true,
 	confirmBeforeDelete: true,
 	copyOnDeleteTypes: DEFAULT_COPY_ON_DELETE_TYPES,

@@ -190,6 +190,35 @@ export function rebuildEmbedWithAlias(
 }
 
 /**
+ * Collect unique vault files referenced by embeds/links in `text`
+ * (multi-line selections supported). Skips web URLs and unresolved paths.
+ */
+export function collectEmbedFilesFromText(
+	app: {
+		metadataCache: {
+			getFirstLinkpathDest: (
+				linkpath: string,
+				sourcePath: string,
+			) => TFile | null;
+		};
+		vault: { getAbstractFileByPath: (path: string) => unknown };
+	},
+	text: string,
+	sourcePath: string,
+): TFile[] {
+	const seen = new Set<string>();
+	const files: TFile[] = [];
+	for (const embed of matchAllEmbeds(text)) {
+		if (isWebUrl(embed.linkpath)) continue;
+		const dest = resolveEmbedFile(app, embed.linkpath, sourcePath);
+		if (!dest || seen.has(dest.path)) continue;
+		seen.add(dest.path);
+		files.push(dest);
+	}
+	return files;
+}
+
+/**
  * Resolve a linkpath relative to the active file.
  */
 export function resolveEmbedFile(

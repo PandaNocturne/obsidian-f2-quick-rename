@@ -65,6 +65,12 @@ export default class F2RenamePlugin extends Plugin {
 		if (typeof this.settings.attachmentSilentMode !== 'boolean') {
 			this.settings.attachmentSilentMode = false;
 		}
+		if (typeof this.settings.editExtension !== 'boolean') {
+			this.settings.editExtension = false;
+		}
+		if (typeof this.settings.batchRename !== 'boolean') {
+			this.settings.batchRename = false;
+		}
 		if (typeof this.settings.showHeaderDelete !== 'boolean') {
 			this.settings.showHeaderDelete = true;
 		}

@@ -126,6 +126,11 @@ const TOGGLE_OPTIONS: ToggleOption[] = [
 		descKey: 'settings.features.editExtension.desc',
 	},
 	{
+		key: 'batchRename',
+		nameKey: 'settings.features.batchRename.name',
+		descKey: 'settings.features.batchRename.desc',
+	},
+	{
 		key: 'showHeaderDelete',
 		nameKey: 'settings.features.showHeaderDelete.name',
 		descKey: 'settings.features.showHeaderDelete.desc',

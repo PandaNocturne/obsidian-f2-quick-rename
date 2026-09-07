@@ -18,6 +18,13 @@ export const en = {
 	'settings.tab.attachments': 'Attachments',
 
 	'notice.noOpenFile': 'No file is open',
+	'notice.noBatchFiles':
+		'Select multiple lines that contain at least two embeds or links',
+	'notice.batchRenameProgress':
+		'Batch rename ({current}/{total})\nRenamed: {renamed} | Failed: {failed}\n{status}',
+	'notice.batchRenameDone':
+		'Batch rename done ({total}/{total})\nRenamed: {renamed} | Failed: {failed}',
+	'notice.batchRenameItemFailed': 'Failed to rename: {name}',
 	'notice.noEmbedToDelete':
 		'No embedded file under the cursor. This command only deletes embeds, not the current note.',
 	'notice.fullPropertiesMarkdownOnly':
@@ -64,6 +71,48 @@ export const en = {
 	'modal.attachments.currentName': 'Current',
 	'modal.attachments.newName': 'New name',
 	'modal.attachments.resetSuggestions': 'Reset suggestions',
+
+	'modal.batch.title': 'Batch rename ({count})',
+	'modal.batch.namingMethod': 'Naming method',
+	'modal.batch.modeFormat': 'Format',
+	'modal.batch.modeReplace': 'Replace',
+	'modal.batch.nameLabel': 'Name',
+	'modal.batch.placeholderHint':
+		'Template for the full filename. Default {name}{ext}. Tokens: {name} basename, {ext} extension with dot, {n} index, {date} / {date:YYYY-MM-DD}, {folder} parent folder.',
+	'modal.batch.placeholder.name': 'Original name',
+	'modal.batch.placeholder.ext': 'Extension',
+	'modal.batch.placeholder.index': 'Index',
+	'modal.batch.placeholder.date': 'Date',
+	'modal.batch.placeholder.folder': 'Folder',
+	'modal.batch.findLabel': 'Find',
+	'modal.batch.replaceLabel': 'Replace with',
+	'modal.batch.findPlaceholder': 'Text to find in the filename',
+	'modal.batch.replacePlaceholder': 'Replacement text',
+	'modal.batch.replaceHint':
+		'Replaces text in the basename only; the original extension is kept.',
+	'modal.batch.textCase': 'Text case',
+	'modal.batch.case.none': 'No change',
+	'modal.batch.case.upper': 'UPPERCASE',
+	'modal.batch.case.lower': 'lowercase',
+	'modal.batch.case.title': 'Title Case',
+	'modal.batch.originalName': 'Original name',
+	'modal.batch.newName': 'New name',
+	'modal.batch.rename': 'Rename',
+	'modal.batch.process': 'Process',
+	'modal.batch.confirm': 'Confirm',
+	'modal.batch.undoStep': 'Undo step',
+	'modal.batch.removeItem': 'Remove from list',
+	'modal.batch.clearList': 'Clear list',
+	'modal.batch.dragToReorder': 'Drag to reorder',
+	'modal.batch.sortByName': 'Sort by original name',
+	'modal.batch.sortAsc': 'Sorted A → Z',
+	'modal.batch.sortDesc': 'Sorted Z → A',
+	'modal.batch.emptyList': 'No files in the list',
+	'modal.batch.processHint':
+		'Click Process to apply the current rule to the preview. You can process multiple times, then Confirm to rename files.',
+	'modal.batch.errorEmpty': '(empty name)',
+	'modal.batch.errorInvalid': '(invalid characters)',
+	'modal.batch.errorCollision': 'Conflict: {name}',
 
 	'tooltip.doubleClickToEdit': 'Double-click to edit',
 	'tooltip.clickIconOpenDoubleClickEdit':
@@ -149,6 +198,9 @@ export const en = {
 	'settings.features.editExtension.name': 'Double-click to edit extension',
 	'settings.features.editExtension.desc':
 		'When enabled, double-click the extension after the filename in the rename panel to edit it (for example .md). Off by default.',
+	'settings.features.batchRename.name': 'Batch F2 rename',
+	'settings.features.batchRename.desc':
+		'When a multi-line selection contains multiple embeds or links, F2 opens a batch rename panel (format template or find/replace). Off by default.',
 	'settings.features.showHeaderDelete.name': 'Delete button in rename panel',
 	'settings.features.showHeaderDelete.desc':
 		'Show a delete button in the rename panel header. After confirmation, copyable files are copied to the clipboard (Markdown without YAML) and the file is moved to trash.',
