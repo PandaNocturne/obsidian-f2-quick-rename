@@ -205,12 +205,18 @@ export const en = {
 	'settings.basic.locale.system': 'System default',
 	'settings.basic.locale.zhCN': '简体中文',
 	'settings.basic.locale.en': 'English',
-	'settings.basic.modalWidth.name': 'Panel width',
+	'settings.basic.modalWidth.name': 'Rename panel width',
 	'settings.basic.modalWidth.desc':
-		'CSS lengths such as 40vw or 600px. Separate multiple with commas; the smallest wins (CSS min()). Example: 40vw, 720px',
-	'settings.basic.modalMaxHeight.name': 'Panel max height',
+		'Width of the single-file rename panel. CSS lengths such as 40vw or 600px. Separate multiple with commas; the smallest wins (CSS min()). Example: 40vw, 720px',
+	'settings.basic.modalMaxHeight.name': 'Rename panel max height',
 	'settings.basic.modalMaxHeight.desc':
-		'CSS lengths such as 90vh or 920px. Separate multiple with commas; the smallest wins. Example: 90vh, 920px',
+		'Max height of the single-file rename panel. CSS lengths such as 80vh or 650px. Separate multiple with commas; the smallest wins. Example: 80vh, 650px',
+	'settings.basic.batchModalWidth.name': 'Batch panel width',
+	'settings.basic.batchModalWidth.desc':
+		'Width of the batch rename panel. CSS lengths such as 92vw or 1100px. Separate multiple with commas; the smallest wins. Example: 92vw, 1100px',
+	'settings.basic.batchModalMaxHeight.name': 'Batch panel height',
+	'settings.basic.batchModalMaxHeight.desc':
+		'Height of the batch rename panel (fixed). CSS lengths such as 80vh or 650px. Separate multiple with commas; the smallest wins. Example: 80vh, 650px',
 	'settings.basic.resetSize': 'Reset to default',
 
 	'settings.features.heading': 'Feature toggles',

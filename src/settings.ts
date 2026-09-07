@@ -7,6 +7,8 @@ import {
 } from './utils/attachments';
 import { DEFAULT_COPY_ON_DELETE_TYPES } from './utils/file-delete';
 import {
+	DEFAULT_BATCH_MODAL_MAX_HEIGHT,
+	DEFAULT_BATCH_MODAL_WIDTH,
 	DEFAULT_MODAL_MAX_HEIGHT,
 	DEFAULT_MODAL_WIDTH,
 } from './utils/css-size';
@@ -184,6 +186,14 @@ export interface F2RenameSettings {
 	 */
 	modalMaxHeight: string;
 	/**
+	 * Batch rename panel width. Comma-separated CSS lengths use CSS `min()`.
+	 */
+	batchModalWidth: string;
+	/**
+	 * Batch rename panel height. Comma-separated CSS lengths use CSS `min()`.
+	 */
+	batchModalMaxHeight: string;
+	/**
 	 * Comma-separated attachment extensions recognized by attachment rename
 	 * (e.g. png,jpg,mp4). Dots optional.
 	 */
@@ -247,6 +257,8 @@ export const DEFAULT_SETTINGS: F2RenameSettings = {
 	copyOnDeleteTypes: DEFAULT_COPY_ON_DELETE_TYPES,
 	modalWidth: DEFAULT_MODAL_WIDTH,
 	modalMaxHeight: DEFAULT_MODAL_MAX_HEIGHT,
+	batchModalWidth: DEFAULT_BATCH_MODAL_WIDTH,
+	batchModalMaxHeight: DEFAULT_BATCH_MODAL_MAX_HEIGHT,
 	attachmentExtensions: DEFAULT_ATTACHMENT_EXTENSIONS,
 	attachmentNameTemplate: DEFAULT_ATTACHMENT_NAME_TEMPLATE,
 	attachmentRenameDelayMs: DEFAULT_ATTACHMENT_RENAME_DELAY_MS,

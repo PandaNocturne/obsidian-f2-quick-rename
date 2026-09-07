@@ -13,7 +13,8 @@ import {
 	type BatchTextProcessOptions,
 } from '../utils/batch-rename';
 import {
-	DEFAULT_MODAL_MAX_HEIGHT,
+	DEFAULT_BATCH_MODAL_MAX_HEIGHT,
+	DEFAULT_BATCH_MODAL_WIDTH,
 	toMinCssValue,
 } from '../utils/css-size';
 import {
@@ -21,9 +22,6 @@ import {
 	resolveRenameFileKind,
 } from '../utils/embed';
 import { BatchRenameHelpModal } from './batch-rename-help-modal';
-
-/** Wider than the single-file rename panel (list + rules). */
-const DEFAULT_BATCH_MODAL_WIDTH = '92vw, 1100px';
 
 export interface BatchRenameResultItem {
 	file: TFile;
@@ -79,7 +77,8 @@ export class BatchRenameModal extends Modal {
 	private confirmBtn!: HTMLButtonElement;
 	private undoBtn!: HTMLButtonElement;
 	private clearBtn!: HTMLButtonElement;
-	private modeButtons = new Map<BatchRenameMode, HTMLButtonElement>();
+	private activeTab: BatchRenameMode = 'format';
+	private tabButtons = new Map<BatchRenameMode, HTMLButtonElement>();
 	private caseButtons = new Map<BatchTextCase, HTMLButtonElement>();
 	private processButtons = new Map<BatchTextProcessId, HTMLButtonElement>();
 
@@ -93,7 +92,8 @@ export class BatchRenameModal extends Modal {
 		this.files = [...files];
 		this.onSubmit = onSubmit;
 		this.modalWidth = opts.modalWidth ?? DEFAULT_BATCH_MODAL_WIDTH;
-		this.modalMaxHeight = opts.modalMaxHeight ?? DEFAULT_MODAL_MAX_HEIGHT;
+		this.modalMaxHeight =
+			opts.modalMaxHeight ?? DEFAULT_BATCH_MODAL_MAX_HEIGHT;
 		for (const file of this.files) {
 			this.workingNames.set(file.path, file.name);
 			this.selectedPaths.add(file.path);
@@ -111,7 +111,7 @@ export class BatchRenameModal extends Modal {
 		);
 		this.modalEl.style.setProperty(
 			'--f2-rename-modal-max-height',
-			toMinCssValue(this.modalMaxHeight, DEFAULT_MODAL_MAX_HEIGHT),
+			toMinCssValue(this.modalMaxHeight, DEFAULT_BATCH_MODAL_MAX_HEIGHT),
 		);
 
 		const header = contentEl.createDiv({ cls: 'f2-rename-header' });
@@ -220,21 +220,22 @@ export class BatchRenameModal extends Modal {
 			text: t('modal.batch.namingMethod'),
 		});
 		const modeTabs = modeRow.createDiv({ cls: 'f2-batch-mode-tabs' });
-		for (const mode of ['format', 'replace'] as const) {
+		for (const tab of ['format', 'replace'] as const) {
 			const btn = modeTabs.createEl('button', {
 				cls: 'f2-batch-mode-tab',
 				text:
-					mode === 'format'
+					tab === 'format'
 						? t('modal.batch.modeFormat')
 						: t('modal.batch.modeReplace'),
 				attr: {
 					type: 'button',
-					'aria-selected': mode === this.mode ? 'true' : 'false',
+					'aria-selected':
+						tab === this.activeTab ? 'true' : 'false',
 				},
 			});
-			if (mode === this.mode) btn.addClass('is-active');
-			btn.addEventListener('click', () => this.setMode(mode));
-			this.modeButtons.set(mode, btn);
+			if (tab === this.activeTab) btn.addClass('is-active');
+			btn.addEventListener('click', () => this.setActiveTab(tab));
+			this.tabButtons.set(tab, btn);
 		}
 
 		this.formatPanel = namingSection.createDiv({
@@ -246,111 +247,6 @@ export class BatchRenameModal extends Modal {
 			cls: 'f2-batch-mode-panel',
 		});
 		this.renderReplacePanel(this.replacePanel);
-
-		root.createDiv({ cls: 'f2-batch-section-divider' });
-
-		const caseSection = root.createDiv({ cls: 'f2-batch-section' });
-		const caseField = caseSection.createDiv({ cls: 'f2-batch-field' });
-		caseField.createDiv({
-			cls: 'f2-batch-label',
-			text: t('modal.batch.textCase'),
-		});
-		const caseRow = caseField.createDiv({ cls: 'f2-batch-case-row' });
-		const cases: Array<{
-			id: BatchTextCase;
-			label: string;
-			titleKey:
-				| 'modal.batch.case.none'
-				| 'modal.batch.case.upper'
-				| 'modal.batch.case.lower'
-				| 'modal.batch.case.title';
-		}> = [
-			{ id: 'none', label: '—', titleKey: 'modal.batch.case.none' },
-			{ id: 'upper', label: 'AG', titleKey: 'modal.batch.case.upper' },
-			{ id: 'lower', label: 'ag', titleKey: 'modal.batch.case.lower' },
-			{ id: 'title', label: 'Ag', titleKey: 'modal.batch.case.title' },
-		];
-		for (const item of cases) {
-			const btn = caseRow.createEl('button', {
-				cls: 'f2-batch-case-btn',
-				text: item.label,
-				attr: {
-					type: 'button',
-					title: t(item.titleKey),
-					'aria-pressed': item.id === this.textCase ? 'true' : 'false',
-				},
-			});
-			if (item.id === this.textCase) btn.addClass('is-active');
-			btn.addEventListener('click', () => this.setTextCase(item.id));
-			this.caseButtons.set(item.id, btn);
-		}
-
-		root.createDiv({ cls: 'f2-batch-section-divider' });
-
-		const processSection = root.createDiv({ cls: 'f2-batch-section' });
-		const processField = processSection.createDiv({ cls: 'f2-batch-field' });
-		processField.createDiv({
-			cls: 'f2-batch-label',
-			text: t('modal.batch.textProcess'),
-		});
-		const processRow = processField.createDiv({
-			cls: 'f2-batch-process-row',
-		});
-
-		const processMeta: Record<
-			BatchTextProcessId,
-			{ label: string; hint: string }
-		> = {
-			removeNumbering: {
-				label: t('modal.batch.removeNumbering'),
-				hint: t('modal.batch.removeNumberingHint'),
-			},
-			removeBrackets: {
-				label: t('modal.batch.removeBrackets'),
-				hint: t('modal.batch.removeBracketsHint'),
-			},
-			removeSpecial: {
-				label: t('modal.batch.removeSpecial'),
-				hint: t('modal.batch.removeSpecialHint'),
-			},
-			fullwidthToHalf: {
-				label: t('modal.batch.fullwidthToHalf'),
-				hint: t('modal.batch.fullwidthToHalfHint'),
-			},
-			collapseSpaces: {
-				label: t('modal.batch.collapseSpaces'),
-				hint: t('modal.batch.collapseSpacesHint'),
-			},
-			spacesToUnderscore: {
-				label: t('modal.batch.spacesToUnderscore'),
-				hint: t('modal.batch.spacesToUnderscoreHint'),
-			},
-			underscoresToSpaces: {
-				label: t('modal.batch.underscoresToSpaces'),
-				hint: t('modal.batch.underscoresToSpacesHint'),
-			},
-			spaceCjkLatin: {
-				label: t('modal.batch.spaceCjkLatin'),
-				hint: t('modal.batch.spaceCjkLatinHint'),
-			},
-		};
-
-		for (const id of BATCH_TEXT_PROCESS_IDS) {
-			const meta = processMeta[id];
-			const on = Boolean(this.textProcess[id]);
-			const btn = processRow.createEl('button', {
-				cls: 'f2-batch-chip f2-batch-process-chip',
-				text: meta.label,
-				attr: {
-					type: 'button',
-					title: meta.hint,
-					'aria-pressed': on ? 'true' : 'false',
-				},
-			});
-			if (on) btn.addClass('is-active');
-			btn.addEventListener('click', () => this.toggleTextProcess(id));
-			this.processButtons.set(id, btn);
-		}
 
 		const actions = root.createDiv({ cls: 'f2-batch-controls-actions' });
 		this.undoBtn = actions.createEl('button', {
@@ -451,6 +347,105 @@ export class BatchRenameModal extends Modal {
 				}),
 			);
 		}
+
+		const caseField = panel.createDiv({ cls: 'f2-batch-field' });
+		caseField.createDiv({
+			cls: 'f2-batch-label',
+			text: t('modal.batch.textCase'),
+		});
+		const caseRow = caseField.createDiv({ cls: 'f2-batch-case-row' });
+		const cases: Array<{
+			id: BatchTextCase;
+			label: string;
+			titleKey:
+				| 'modal.batch.case.none'
+				| 'modal.batch.case.upper'
+				| 'modal.batch.case.lower'
+				| 'modal.batch.case.title';
+		}> = [
+			{ id: 'none', label: '—', titleKey: 'modal.batch.case.none' },
+			{ id: 'upper', label: 'AG', titleKey: 'modal.batch.case.upper' },
+			{ id: 'lower', label: 'ag', titleKey: 'modal.batch.case.lower' },
+			{ id: 'title', label: 'Ag', titleKey: 'modal.batch.case.title' },
+		];
+		for (const item of cases) {
+			const btn = caseRow.createEl('button', {
+				cls: 'f2-batch-case-btn',
+				text: item.label,
+				attr: {
+					type: 'button',
+					title: t(item.titleKey),
+					'aria-pressed': item.id === this.textCase ? 'true' : 'false',
+				},
+			});
+			if (item.id === this.textCase) btn.addClass('is-active');
+			btn.addEventListener('click', () => this.setTextCase(item.id));
+			this.caseButtons.set(item.id, btn);
+		}
+
+		const processField = panel.createDiv({ cls: 'f2-batch-field' });
+		processField.createDiv({
+			cls: 'f2-batch-label',
+			text: t('modal.batch.textProcess'),
+		});
+		const processRow = processField.createDiv({
+			cls: 'f2-batch-process-row',
+		});
+
+		const processMeta: Record<
+			BatchTextProcessId,
+			{ label: string; hint: string }
+		> = {
+			removeNumbering: {
+				label: t('modal.batch.removeNumbering'),
+				hint: t('modal.batch.removeNumberingHint'),
+			},
+			removeBrackets: {
+				label: t('modal.batch.removeBrackets'),
+				hint: t('modal.batch.removeBracketsHint'),
+			},
+			removeSpecial: {
+				label: t('modal.batch.removeSpecial'),
+				hint: t('modal.batch.removeSpecialHint'),
+			},
+			fullwidthToHalf: {
+				label: t('modal.batch.fullwidthToHalf'),
+				hint: t('modal.batch.fullwidthToHalfHint'),
+			},
+			collapseSpaces: {
+				label: t('modal.batch.collapseSpaces'),
+				hint: t('modal.batch.collapseSpacesHint'),
+			},
+			spacesToUnderscore: {
+				label: t('modal.batch.spacesToUnderscore'),
+				hint: t('modal.batch.spacesToUnderscoreHint'),
+			},
+			underscoresToSpaces: {
+				label: t('modal.batch.underscoresToSpaces'),
+				hint: t('modal.batch.underscoresToSpacesHint'),
+			},
+			spaceCjkLatin: {
+				label: t('modal.batch.spaceCjkLatin'),
+				hint: t('modal.batch.spaceCjkLatinHint'),
+			},
+		};
+
+		for (const id of BATCH_TEXT_PROCESS_IDS) {
+			const meta = processMeta[id];
+			const on = Boolean(this.textProcess[id]);
+			const btn = processRow.createEl('button', {
+				cls: 'f2-batch-chip f2-batch-process-chip',
+				text: meta.label,
+				attr: {
+					type: 'button',
+					title: meta.hint,
+					'aria-pressed': on ? 'true' : 'false',
+				},
+			});
+			if (on) btn.addClass('is-active');
+			btn.addEventListener('click', () => this.toggleTextProcess(id));
+			this.processButtons.set(id, btn);
+		}
 	}
 
 	private renderReplacePanel(panel: HTMLElement): void {
@@ -523,18 +518,22 @@ export class BatchRenameModal extends Modal {
 		regexLabel.createSpan({ text: t('modal.batch.useRegex') });
 	}
 
-	private setMode(mode: BatchRenameMode): void {
-		if (this.mode === mode) return;
-		this.mode = mode;
-		for (const [id, btn] of this.modeButtons) {
-			btn.toggleClass('is-active', id === mode);
-			btn.setAttr('aria-selected', id === mode ? 'true' : 'false');
+	private setActiveTab(tab: BatchRenameMode): void {
+		if (this.activeTab === tab) return;
+		this.activeTab = tab;
+		const modeChanged = this.mode !== tab;
+		this.mode = tab;
+		if (modeChanged) this.onRuleChanged();
+
+		for (const [id, btn] of this.tabButtons) {
+			btn.toggleClass('is-active', id === tab);
+			btn.setAttr('aria-selected', id === tab ? 'true' : 'false');
 		}
-		this.formatPanel.toggleClass('is-active', mode === 'format');
-		this.replacePanel.toggleClass('is-active', mode === 'replace');
-		this.onRuleChanged();
+		this.formatPanel.toggleClass('is-active', tab === 'format');
+		this.replacePanel.toggleClass('is-active', tab === 'replace');
+
 		window.setTimeout(() => {
-			if (mode === 'format') {
+			if (tab === 'format') {
 				this.templateInput.focus();
 				this.templateInput.select();
 			} else {
@@ -656,6 +655,7 @@ export class BatchRenameModal extends Modal {
 	/** Restore naming / text options to defaults for the next step. */
 	private resetRuleOptions(): void {
 		this.mode = 'format';
+		this.activeTab = 'format';
 		this.template = DEFAULT_BATCH_NAME_TEMPLATE;
 		this.find = '';
 		this.replace = '';
@@ -663,7 +663,7 @@ export class BatchRenameModal extends Modal {
 		this.textCase = 'none';
 		this.textProcess = {};
 
-		for (const [id, btn] of this.modeButtons) {
+		for (const [id, btn] of this.tabButtons) {
 			btn.toggleClass('is-active', id === 'format');
 			btn.setAttr('aria-selected', id === 'format' ? 'true' : 'false');
 		}

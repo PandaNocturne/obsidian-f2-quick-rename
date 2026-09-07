@@ -187,7 +187,8 @@ export class RenameService {
 
 		const { settings } = this.plugin;
 		const result = await promptBatchRename(this.app, targets, {
-			modalMaxHeight: settings.modalMaxHeight,
+			modalWidth: settings.batchModalWidth,
+			modalMaxHeight: settings.batchModalMaxHeight,
 		});
 		if (!result || result.length === 0) return;
 

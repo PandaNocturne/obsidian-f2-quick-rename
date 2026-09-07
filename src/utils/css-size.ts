@@ -2,7 +2,13 @@
 export const DEFAULT_MODAL_WIDTH = '40vw';
 
 /** Default rename-panel max height (CSS length list; commas → min()). */
-export const DEFAULT_MODAL_MAX_HEIGHT = '90vh, 920px';
+export const DEFAULT_MODAL_MAX_HEIGHT = '80vh, 650px';
+
+/** Default batch-rename panel width. */
+export const DEFAULT_BATCH_MODAL_WIDTH = '92vw, 1100px';
+
+/** Default batch-rename panel height. */
+export const DEFAULT_BATCH_MODAL_MAX_HEIGHT = '80vh, 650px';
 
 const CSS_LENGTH =
 	/^(?:0|-?\d+(?:\.\d+)?)(?:px|em|rem|vh|vw|vmin|vmax|%|ch|ex|cm|mm|in|pt|pc)$/i;

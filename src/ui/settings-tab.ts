@@ -22,6 +22,8 @@ import {
 } from '../utils/attachments';
 import { DEFAULT_COPY_ON_DELETE_TYPES } from '../utils/file-delete';
 import {
+	DEFAULT_BATCH_MODAL_MAX_HEIGHT,
+	DEFAULT_BATCH_MODAL_WIDTH,
 	DEFAULT_MODAL_MAX_HEIGHT,
 	DEFAULT_MODAL_WIDTH,
 	normalizeCssLengthList,
@@ -258,6 +260,18 @@ export class F2RenameSettingTab extends PluginSettingTab {
 			settingKey: 'modalMaxHeight',
 			fallback: DEFAULT_MODAL_MAX_HEIGHT,
 		});
+		this.addCssSizeSetting(containerEl, {
+			nameKey: 'settings.basic.batchModalWidth.name',
+			descKey: 'settings.basic.batchModalWidth.desc',
+			settingKey: 'batchModalWidth',
+			fallback: DEFAULT_BATCH_MODAL_WIDTH,
+		});
+		this.addCssSizeSetting(containerEl, {
+			nameKey: 'settings.basic.batchModalMaxHeight.name',
+			descKey: 'settings.basic.batchModalMaxHeight.desc',
+			settingKey: 'batchModalMaxHeight',
+			fallback: DEFAULT_BATCH_MODAL_MAX_HEIGHT,
+		});
 	}
 
 	private renderFeatureSettings(containerEl: HTMLElement): void {
@@ -420,7 +434,11 @@ export class F2RenameSettingTab extends PluginSettingTab {
 		opts: {
 			nameKey: TranslationKey;
 			descKey: TranslationKey;
-			settingKey: 'modalWidth' | 'modalMaxHeight';
+			settingKey:
+				| 'modalWidth'
+				| 'modalMaxHeight'
+				| 'batchModalWidth'
+				| 'batchModalMaxHeight';
 			fallback: string;
 		},
 	): void {

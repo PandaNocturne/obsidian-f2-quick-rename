@@ -5,7 +5,7 @@
 	max-width: 100%;
 	/* Shrink to content; only hit max-height when the panel is tall. */
 	height: fit-content;
-	max-height: var(--f2-rename-modal-max-height, min(90vh, 920px));
+	max-height: var(--f2-rename-modal-max-height, min(80vh, 650px));
 	padding: 0;
 	display: flex;
 	flex-direction: column;
@@ -24,7 +24,7 @@
 	flex: 0 1 auto;
 	min-height: 0;
 	height: fit-content;
-	max-height: var(--f2-rename-modal-max-height, min(90vh, 920px));
+	max-height: var(--f2-rename-modal-max-height, min(80vh, 650px));
 	padding: 0;
 	overflow: hidden;
 }
@@ -1107,10 +1107,19 @@
 
 .modal.f2-batch-rename-modal {
 	width: var(--f2-rename-modal-width, min(92vw, 1100px));
+	height: var(--f2-rename-modal-max-height, min(80vh, 650px));
+	max-height: var(--f2-rename-modal-max-height, min(80vh, 650px));
+}
+
+.f2-batch-rename-modal .modal-content {
+	flex: 1 1 auto;
+	height: 100%;
+	max-height: none;
 }
 
 .f2-batch-rename-modal .modal-content > .f2-batch-layout {
 	flex: 1 1 auto;
+	min-height: 0;
 }
 
 .f2-batch-layout {

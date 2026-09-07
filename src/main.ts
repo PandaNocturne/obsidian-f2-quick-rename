@@ -15,6 +15,8 @@ import {
 } from './utils/attachments';
 import { DEFAULT_COPY_ON_DELETE_TYPES } from './utils/file-delete';
 import {
+	DEFAULT_BATCH_MODAL_MAX_HEIGHT,
+	DEFAULT_BATCH_MODAL_WIDTH,
 	DEFAULT_MODAL_MAX_HEIGHT,
 	DEFAULT_MODAL_WIDTH,
 	normalizeCssLengthList,
@@ -45,6 +47,14 @@ export default class F2RenamePlugin extends Plugin {
 		this.settings.modalMaxHeight = normalizeCssLengthList(
 			this.settings.modalMaxHeight,
 			DEFAULT_MODAL_MAX_HEIGHT,
+		);
+		this.settings.batchModalWidth = normalizeCssLengthList(
+			this.settings.batchModalWidth,
+			DEFAULT_BATCH_MODAL_WIDTH,
+		);
+		this.settings.batchModalMaxHeight = normalizeCssLengthList(
+			this.settings.batchModalMaxHeight,
+			DEFAULT_BATCH_MODAL_MAX_HEIGHT,
 		);
 
 		if (typeof this.settings.attachmentExtensions !== 'string') {
