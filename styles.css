@@ -130,7 +130,7 @@
 .f2-rename-field {
 	display: grid;
 	grid-template-columns: var(--f2-rename-label-width) minmax(0, 1fr);
-	column-gap: var(--f2-rename-field-gap);
+	gap: 0 var(--f2-rename-field-gap);
 	align-items: center;
 	width: 100%;
 }
@@ -467,19 +467,17 @@
 	height: 1.1rem;
 }
 
-/* List property: same form grid as other fields; chips under the control */
+/* List property: label+input row, then chips aligned under the control */
 .f2-rename-list-field {
-	display: grid;
-	grid-template-columns: var(--f2-rename-label-width, 5.5rem) minmax(0, 1fr);
-	column-gap: var(--f2-rename-field-gap, 0.75rem);
-	row-gap: 0.4rem;
-	align-items: start;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	align-items: stretch;
 	width: 100%;
 }
 
-/* Flatten head so label + input share the parent form grid */
 .f2-rename-list-head {
-	display: contents;
+	width: 100%;
 }
 
 .f2-rename-list-field .f2-rename-label {
@@ -490,7 +488,9 @@
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.35rem;
-	grid-column: 2;
+	margin-left: calc(
+		var(--f2-rename-label-width, 5.5rem) + var(--f2-rename-field-gap, 0.75rem)
+	);
 	min-width: 0;
 }
 
@@ -618,11 +618,16 @@
 	display: none;
 }
 
-.f2-rename-chip-remove,
-.f2-rename-chip-remove:hover,
-.f2-rename-chip-remove:active,
-.f2-rename-chip-remove:focus,
-.f2-rename-chip-remove:focus-visible {
+.modal button.f2-rename-chip-remove,
+.modal button.f2-rename-chip-remove:hover,
+.modal button.f2-rename-chip-remove:active,
+.modal button.f2-rename-chip-remove:focus,
+.modal button.f2-rename-chip-remove:focus-visible,
+.f2-rename-chip button.f2-rename-chip-remove,
+.f2-rename-chip button.f2-rename-chip-remove:hover,
+.f2-rename-chip button.f2-rename-chip-remove:active,
+.f2-rename-chip button.f2-rename-chip-remove:focus,
+.f2-rename-chip button.f2-rename-chip-remove:focus-visible {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -630,13 +635,14 @@
 	padding: 0.1rem;
 	border: none;
 	border-radius: 0;
-	background: transparent !important;
-	box-shadow: none !important;
+	background: transparent;
+	box-shadow: none;
 	color: var(--text-muted);
 	cursor: pointer;
 }
 
-.f2-rename-chip-remove:hover {
+.modal button.f2-rename-chip-remove:hover,
+.f2-rename-chip button.f2-rename-chip-remove:hover {
 	color: var(--text-normal);
 }
 

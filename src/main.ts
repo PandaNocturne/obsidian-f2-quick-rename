@@ -118,7 +118,6 @@ export default class F2RenamePlugin extends Plugin {
 		this.addCommand({
 			id: 'f2-rename',
 			name: t('commands.renameFileOrEmbed'),
-			hotkeys: [{ modifiers: [], key: 'F2' }],
 			callback: () => {
 				void this.renameService.run();
 			},
@@ -127,7 +126,6 @@ export default class F2RenamePlugin extends Plugin {
 		this.addCommand({
 			id: 'copy-and-delete',
 			name: t('commands.copyAndDelete'),
-			hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'X' }],
 			callback: () => {
 				void this.renameService.runCopyAndDelete();
 			},
@@ -136,7 +134,6 @@ export default class F2RenamePlugin extends Plugin {
 		this.addCommand({
 			id: 'rename-attachments',
 			name: t('commands.renameAttachments'),
-			hotkeys: [{ modifiers: [], key: 'F1' }],
 			callback: () => {
 				void this.attachmentRenameService.run();
 			},
@@ -145,7 +142,6 @@ export default class F2RenamePlugin extends Plugin {
 		this.addCommand({
 			id: 'f5-full-properties',
 			name: t('commands.renameAndEditAllProperties'),
-			hotkeys: [{ modifiers: [], key: 'F5' }],
 			callback: () => {
 				void this.renameService.runFullProperties();
 			},

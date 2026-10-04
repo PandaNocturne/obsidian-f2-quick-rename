@@ -140,9 +140,7 @@ export class AttachmentRenameModal extends Modal {
 		confirmBtn.addEventListener('click', () => this.submitResult());
 
 		window.setTimeout(() => {
-			const first = this.inputs.values().next().value as
-				| HTMLInputElement
-				| undefined;
+			const first = this.inputs.values().next().value;
 			first?.focus();
 			first?.select();
 		}, 50);

@@ -7,6 +7,13 @@ export type BatchTextCase = 'none' | 'upper' | 'lower' | 'title';
 
 export const DEFAULT_BATCH_NAME_TEMPLATE = '{name}{ext}';
 
+type MomentLike = { format: (fmt: string) => string };
+
+/** Format a unix-ms (or now) timestamp via Obsidian's moment. */
+function formatTimestamp(ms: number | undefined, fmt: string): string {
+	return (moment(ms) as MomentLike).format(fmt);
+}
+
 export interface BatchRenamePreview {
 	file: TFile;
 	/** Full new leaf name including extension when present. */
@@ -68,13 +75,13 @@ export function expandBatchNameTemplate(
 	let result = template;
 
 	result = result.replace(/\{ctime(?::([^}]+))?\}/gi, (_m, fmt?: string) =>
-		moment(file.stat.ctime).format(fmt || 'YYYYMMDD'),
+		formatTimestamp(file.stat.ctime, fmt || 'YYYYMMDD'),
 	);
 	result = result.replace(/\{mtime(?::([^}]+))?\}/gi, (_m, fmt?: string) =>
-		moment(file.stat.mtime).format(fmt || 'YYYYMMDD'),
+		formatTimestamp(file.stat.mtime, fmt || 'YYYYMMDD'),
 	);
 	result = result.replace(/\{date(?::([^}]+))?\}/gi, (_m, fmt?: string) =>
-		moment().format(fmt || 'YYYYMMDD'),
+		formatTimestamp(undefined, fmt || 'YYYYMMDD'),
 	);
 	result = result.replace(
 		/\{(?:n|index)(?::(\d+))?\}/gi,
@@ -142,7 +149,7 @@ export function applyFindReplace(
 /** Remove numbering / digit runs from a basename and tidy leftover separators. */
 export function removeNumbering(basename: string): string {
 	let result = basename
-		.replace(/[(\[{（【［]\s*\d+\s*[)\]}）】］]/g, '')
+		.replace(/[([{（【［]\s*\d+\s*[)\]}）】］]/g, '')
 		.replace(/\d+/g, '');
 	result = result
 		.replace(/[_\-\s.·•]+/g, (chunk) => {
@@ -160,7 +167,7 @@ export function removeNumbering(basename: string): string {
 export function removeBracketContent(text: string): string {
 	return text
 		.replace(
-			/[(\[{（【［《「『｛][^)\]}）】］》」』｝]*[)\]}）】］》」』｝]/g,
+			/[([{（【［《「『｛][^)\]}）】］》」』｝]*[)\]}）】］》」』｝]/g,
 			'',
 		)
 		.replace(/[_\-\s.·•]{2,}/g, (chunk) => {
@@ -179,7 +186,7 @@ export function removeBracketContent(text: string): string {
 export function removeSpecialChars(text: string): string {
 	return text
 		.replace(
-			/[^\w\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\s\-]+/g,
+			/[^\w\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\s-]+/g,
 			'',
 		)
 		.replace(/\s{2,}/g, ' ')

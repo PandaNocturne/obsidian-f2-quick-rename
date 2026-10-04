@@ -45,12 +45,14 @@ Settings → **General** → **Language**:
 
 ## Commands
 
-| Command                        | Default hotkey |
-| ------------------------------ | -------------- |
-| Rename file or embed           | `F2`         |
-| Rename and edit all properties | `F5`         |
+| Command                        | Suggested hotkey (set manually) |
+| ------------------------------ | ------------------------------- |
+| Rename file or embed           | `F2`                            |
+| Rename and edit all properties | `F5`                            |
+| Rename attachments             | `F1`                            |
+| Copy and delete file           | `Ctrl/Cmd+Shift+X`              |
 
-Hotkeys can be changed under **Settings → Hotkeys**.
+No default hotkeys are registered (to avoid conflicts). Bind them under **Settings → Hotkeys**.
 
 ## Install
 
@@ -66,7 +68,7 @@ BRAT can also check for updates (or auto-update on startup in BRAT settings).
 ### Manual
 
 1. Build or download `main.js`, `manifest.json`, and `styles.css`
-2. Copy them to `<Vault>/.obsidian/plugins/ftwo-quick-rename/`
+2. Copy them to `<Vault>/.obsidian/plugins/quick-rename/`
 3. Enable **F2 Quick Rename** in **Settings → Community plugins**
 
 ### Develop

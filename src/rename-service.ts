@@ -348,9 +348,7 @@ export class RenameService {
 	 * On Canvas, prefer the note being edited in a card when present.
 	 */
 	private resolveCommandTargetFile(): TFile | null {
-		const leaf =
-			this.app.workspace.activeLeaf ??
-			this.app.workspace.getMostRecentLeaf();
+		const leaf = this.app.workspace.getMostRecentLeaf();
 		const view = leaf?.view as
 			| { getViewType?: () => string; file?: TFile | null }
 			| undefined;
@@ -378,9 +376,7 @@ export class RenameService {
 
 	/** Excalidraw view that hosts interactive embeds (not Canvas). */
 	private isExcalidrawHostView(): boolean {
-		const leaf =
-			this.app.workspace.activeLeaf ??
-			this.app.workspace.getMostRecentLeaf();
+		const leaf = this.app.workspace.getMostRecentLeaf();
 		const viewType = leaf?.view?.getViewType?.() ?? '';
 		return this.isExcalidrawHostViewType(viewType);
 	}

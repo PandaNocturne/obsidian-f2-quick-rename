@@ -14,6 +14,13 @@ export const DEFAULT_ATTACHMENT_NAME_TEMPLATE =
 
 export const DEFAULT_ATTACHMENT_RENAME_DELAY_MS = 500;
 
+type MomentLike = { format: (fmt: string) => string };
+
+/** Format a unix-ms timestamp via Obsidian's moment without unsafe any use. */
+function formatTimestamp(ms: number, fmt: string): string {
+	return (moment(ms) as MomentLike).format(fmt);
+}
+
 /** Parse a comma/space-separated extension list (no dots). */
 export function parseAttachmentExtensions(raw: string): string[] {
 	const seen = new Set<string>();
@@ -115,10 +122,10 @@ export function buildSuggestedBasename(
 	let result = template;
 
 	result = result.replace(/\{ctime(?::([^}]+))?\}/gi, (_m, fmt?: string) =>
-		moment(file.stat.ctime).format(fmt || 'YYYYMMDDhhmmssSSS'),
+		formatTimestamp(file.stat.ctime, fmt || 'YYYYMMDDhhmmssSSS'),
 	);
 	result = result.replace(/\{mtime(?::([^}]+))?\}/gi, (_m, fmt?: string) =>
-		moment(file.stat.mtime).format(fmt || 'YYYYMMDDhhmmssSSS'),
+		formatTimestamp(file.stat.mtime, fmt || 'YYYYMMDDhhmmssSSS'),
 	);
 	result = result.replace(/\{name\}/gi, () => name);
 	result = result.replace(/\{ext\}/gi, () => ext);

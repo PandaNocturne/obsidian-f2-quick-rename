@@ -1,4 +1,11 @@
-import { App, Modal, PluginSettingTab, Setting, setIcon } from 'obsidian';
+import {
+	App,
+	Modal,
+	PluginSettingTab,
+	Setting,
+	setIcon,
+	type SettingDefinitionItem,
+} from 'obsidian';
 import { t, type LocalePreference, type TranslationKey } from '../i18n';
 import type F2RenamePlugin from '../main';
 import {
@@ -168,6 +175,15 @@ export class F2RenameSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: F2RenamePlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+	}
+
+	/**
+	 * Declared for Obsidian 1.13+ settings search indexing.
+	 * Empty array keeps the imperative `display()` path until settings are
+	 * migrated to the declarative API.
+	 */
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		return [];
 	}
 
 	display(): void {
@@ -1247,13 +1263,13 @@ export class F2RenameSettingTab extends PluginSettingTab {
 }
 
 function multiLineSettingDesc(text: string): DocumentFragment {
-	const frag = document.createDocumentFragment();
-	const lines = text.split('\n');
-	for (let i = 0; i < lines.length; i++) {
-		if (i > 0) frag.appendChild(document.createElement('br'));
-		frag.appendChild(document.createTextNode(lines[i] ?? ''));
-	}
-	return frag;
+	return createFragment((frag) => {
+		const lines = text.split('\n');
+		for (let i = 0; i < lines.length; i++) {
+			if (i > 0) frag.createEl('br');
+			frag.appendText(lines[i] ?? '');
+		}
+	});
 }
 
 function clearDropTargets(parent: HTMLElement | null): void {
