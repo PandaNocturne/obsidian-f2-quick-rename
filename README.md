@@ -68,7 +68,7 @@ BRAT can also check for updates (or auto-update on startup in BRAT settings).
 ### Manual
 
 1. Build or download `main.js`, `manifest.json`, and `styles.css`
-2. Copy them to `<Vault>/.obsidian/plugins/quick-rename/`
+2. Copy them to `<Vault>/.obsidian/plugins/ftwo-quick-rename/`
 3. Enable **F2 Quick Rename** in **Settings → Community plugins**
 
 ### Develop
