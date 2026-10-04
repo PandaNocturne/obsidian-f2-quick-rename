@@ -66,7 +66,7 @@ Obsidian 快速重命名插件：当前笔记、光标处嵌入/链接，以及 
 ### 手动安装
 
 1. 构建或下载 `main.js`、`manifest.json`、`styles.css`
-2. 复制到 `<库>/.obsidian/plugins/f2-quick-rename/`
+2. 复制到 `<库>/.obsidian/plugins/ftwo-quick-rename/`
 3. 在 **设置 → 社区插件** 中启用 **F2 Quick Rename**
 
 ### 开发

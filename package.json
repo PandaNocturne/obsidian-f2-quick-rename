@@ -1,5 +1,5 @@
 {
-	"name": "f2-quick-rename",
+	"name": "ftwo-quick-rename",
 	"version": "1.0.6",
 	"description": "F2 Quick Rename — rename notes and embeds (including images with aliases) in Obsidian",
 	"main": "main.js",
